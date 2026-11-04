@@ -53,7 +53,11 @@
 
     const apiGet = async () => {
       try {
-        const res = await fetch(`${API_URL}?action=obterDados`);
+        const res = await fetch(`${API_URL}?action=obterDados`, {
+          method: 'GET',
+          mode: 'cors',
+          redirect: 'follow'
+        });
         if (!res.ok) throw new Error("Status " + res.status);
         return await res.json();
       } catch (e) {
@@ -66,6 +70,9 @@
       try {
         const res = await fetch(API_URL, {
           method: 'POST',
+          mode: 'cors',
+          redirect: 'follow',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action, payload })
         });
         return await res.json();
@@ -733,7 +740,6 @@
         ['Início', 'home'], ['Agenda', 'calendar'], ['Clientes', 'users'], ['Serviços', 'sparkles'], ['Financeiro', 'wallet']
       ];
 
-      // TELA DE LOGIN SE NÃO ESTIVER LOGADO
       if (!loggedIn) {
         return (
           <div className="grid min-h-screen w-full bg-[#f8f5f2] lg:grid-cols-[1fr_1.05fr]">
@@ -790,7 +796,6 @@
         );
       }
 
-      // APP LOGADO
       return (
         <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
           {/* MENU LATERAL DESKTOP */}
@@ -812,22 +817,16 @@
               ))}
             </nav>
 
-            <div className="mt-auto space-y-2">
-              {isAdmin && (
-                <>
-                  <button type="button" onClick={() => handleOpenServiceModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
-                    <Icon name="plus" size={15}/> + Novo Serviço
-                  </button>
-                  <button type="button" onClick={() => handleOpenUserModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
-                    <Icon name="userPlus" size={15}/> + Nova Profissional
-                  </button>
-                </>
-              )}
-              {/* BOTÃO DESLOGAR DESKTOP */}
-              <button type="button" onClick={handleLogout} className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-950/40 border border-red-800/40 px-3 py-2.5 text-xs font-bold text-rose-300 hover:bg-red-900/60 transition mt-4">
-                <Icon name="logOut" size={16}/> Sair da Conta
-              </button>
-            </div>
+            {isAdmin && (
+              <div className="mt-auto space-y-2">
+                <button type="button" onClick={() => handleOpenServiceModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
+                  <Icon name="plus" size={15}/> + Novo Serviço
+                </button>
+                <button type="button" onClick={() => handleOpenUserModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
+                  <Icon name="userPlus" size={15}/> + Nova Profissional
+                </button>
+              </div>
+            )}
           </aside>
 
           {/* COLUNA PRINCIPAL */}
@@ -851,7 +850,6 @@
                 <div className="flex items-center gap-1.5 rounded-full bg-white p-1 pr-1.5 shadow-sm border border-stone-200/60">
                   <span className="grid w-8 h-8 place-items-center rounded-full bg-[#6f424a] text-xs font-bold text-white">{(currentUser || 'C')[0]}</span>
                   <span className="text-xs font-bold px-1">{currentUser}</span>
-                  {/* BOTÃO SAIR MOBILE / TOPO */}
                   <button type="button" onClick={handleLogout} title="Sair da conta" className="flex items-center gap-1 rounded-full bg-stone-100 hover:bg-red-50 hover:text-red-700 px-2.5 py-1 text-xs font-bold text-stone-600 transition border border-stone-200/50">
                     <Icon name="logOut" size={13}/>
                     <span>Sair</span>
