@@ -51,39 +51,26 @@
   <script type="text/babel">
     const API_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
 
-    // LEITURA 100% IMUNE A CORS VIA JSONP
-    const apiGet = () => {
-      return new Promise((resolve) => {
-        const callbackName = 'gas_callback_' + Math.floor(Math.random() * 1000000);
-        const script = document.createElement('script');
-        
-        const timer = setTimeout(() => {
-          cleanup();
-          resolve(null);
-        }, 15000);
-
-        const cleanup = () => {
-          clearTimeout(timer);
-          if (window[callbackName]) delete window[callbackName];
-          if (script.parentNode) script.parentNode.removeChild(script);
-        };
-
-        window[callbackName] = (data) => {
-          cleanup();
-          resolve(data);
-        };
-
-        script.onerror = () => {
-          cleanup();
-          resolve(null);
-        };
-
-        script.src = `${API_URL}?action=obterDados&callback=${callbackName}`;
-        document.head.appendChild(script);
-      });
+    // Consulta de dados com captura de erro transparente
+    const apiGet = async () => {
+      try {
+        const res = await fetch(`${API_URL}?action=obterDados`, {
+          method: 'GET',
+          redirect: 'follow'
+        });
+        const texto = await res.text();
+        try {
+          const json = JSON.parse(texto);
+          return { ok: true, data: json };
+        } catch (e) {
+          return { ok: false, erro: "A Google devolveu HTML em vez de JSON. Resposta: " + texto.substring(0, 120) };
+        }
+      } catch (err) {
+        return { ok: false, erro: "Erro de ligação: " + (err.message || String(err)) + " (Verifique se tem extensões de AdBlock/bloqueadores ativas)." };
+      }
     };
 
-    // GRAVAÇÃO VIA NO-CORS (NÃO BLOQUEIA NO REDIRECIONAMENTO)
+    // Gravação no-cors
     const apiPost = async (action, payload) => {
       try {
         await fetch(API_URL, {
@@ -558,14 +545,15 @@
       }, []);
 
       const carregarDadosDaPlanilha = async () => {
-        const dados = await apiGet();
-        if (dados && dados.usuarios) {
-          setUsers(dados.usuarios);
-          if (dados.servicos) setServices(dados.servicos);
-          if (dados.agendamentos) setAppointments(dados.agendamentos);
+        setApiError('A carregar...');
+        const res = await apiGet();
+        if (res.ok && res.data && res.data.usuarios) {
+          setUsers(res.data.usuarios);
+          if (res.data.servicos) setServices(res.data.servicos);
+          if (res.data.agendamentos) setAppointments(res.data.agendamentos);
           setApiError('');
         } else {
-          setApiError('Não foi possível sincronizar com o Google Sheets.');
+          setApiError(res.erro || 'Falha desconhecida na sincronização.');
         }
       };
 
@@ -812,7 +800,6 @@
 
       return (
         <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
-          {/* MENU LATERAL DESKTOP (SEM O BOTÃO DE SAIR DUPLICADO NO RODAPÉ) */}
           <aside className="hidden lg:flex w-64 flex-col border-r border-stone-200 bg-[#251d20] px-4 py-6 text-white shrink-0 z-30">
             <div className="flex items-center gap-3 px-3">
               <BrandMark small/>
@@ -843,7 +830,6 @@
             )}
           </aside>
 
-          {/* COLUNA PRINCIPAL */}
           <div className="flex flex-1 flex-col h-full min-w-0 overflow-hidden relative">
             <header className="shrink-0 z-20 flex items-center justify-between border-b border-stone-200/70 bg-[#f8f5f2]/95 px-4 py-3.5 backdrop-blur md:px-8">
               <div className="flex items-center gap-2 lg:hidden">
@@ -872,10 +858,11 @@
               </div>
             </header>
 
+            {/* BARRA DE AVISO COM DIAGNÓSTICO EXATO */}
             {apiError && (
-              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2 text-xs font-semibold text-amber-900 flex items-center justify-between">
-                <span>⚠️ {apiError}</span>
-                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold ml-2">Tentar novamente</button>
+              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2.5 text-xs font-semibold text-amber-900 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <span className="break-all">⚠️ {apiError}</span>
+                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold shrink-0 self-start sm:self-auto">Tentar novamente</button>
               </div>
             )}
 
