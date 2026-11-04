@@ -37,7 +37,7 @@
       width: 100%;
       height: 100%;
       height: 100dvh;
-      overflow: hidden; /* Trava a janela global para o menu nunca tremer */
+      overflow: hidden;
       font-family: 'DM Sans', sans-serif;
       background-color: #f8f5f2;
       -webkit-font-smoothing: antialiased;
@@ -49,7 +49,6 @@
       height: 100dvh;
       overflow: hidden;
     }
-    /* Estilização centralizada e sem distorção dos inputs de data no iOS */
     input[type="date"], input[type="time"] {
       width: 100% !important;
       max-width: 100% !important;
@@ -78,6 +77,32 @@
   <div id="root"></div>
 
   <script type="text/babel">
+    const API_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
+
+    const apiGet = async () => {
+      try {
+        const res = await fetch(`${API_URL}?action=obterDados`);
+        return await res.json();
+      } catch (e) {
+        console.error("Erro na consulta GET:", e);
+        return null;
+      }
+    };
+
+    const apiPost = async (action, payload) => {
+      try {
+        const res = await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({ action, payload })
+        });
+        return await res.json();
+      } catch (e) {
+        console.error("Erro na requisição POST:", e);
+        return { sucesso: false, erro: e.message };
+      }
+    };
+
     const { useState, useEffect, useMemo } = React;
 
     function Icon({ name, size = 21 }) {
@@ -214,16 +239,16 @@
 
     function OtherPage({ 
       tab, 
-      isAdmin,
-      currentUser,
+      isAdmin, 
+      currentUser, 
       users, 
       services, 
       appointments, 
       onOpenUserModal, 
-      onEditUser,
-      onOpenServiceModal,
-      onEditService,
-      onSelectAppointment
+      onEditUser, 
+      onOpenServiceModal, 
+      onEditService, 
+      onSelectAppointment 
     }) {
       const [clientSubTab, setClientSubTab] = useState('agendadas');
       const [selectedClientPro, setSelectedClientPro] = useState(currentUser || users[0]?.name || 'Carol');
@@ -386,7 +411,6 @@
         </div>
       );
 
-      // ABA CLIENTES: AGENDADAS & ATENDIDAS
       if (tab === 'Clientes') {
         const todayStr = getTodayISO();
 
@@ -623,7 +647,6 @@
         </div>
       );
 
-      // ABA FINANCEIRO
       return (
         <div className="w-full px-4 py-6 md:px-8">
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
@@ -797,7 +820,6 @@
       const [currentUser, setCurrentUser] = useState(initialUser || 'Carol');
       const [loggedIn, setLoggedIn] = useState(!!initialUser);
 
-      // INÍCIO COMO ABA PADRÃO
       const [tab, setTab] = useState('Início');
       const [users, setUsers] = useState([{ name: 'Carol', role: 'Administradora', password: '812463', isAdmin: true }]);
       const [services, setServices] = useState([]);
@@ -833,7 +855,6 @@
       const [servTime, setServTime] = useState('60 min');
       const [servPrice, setServPrice] = useState('100');
 
-      // CARREGA SENHAS SALVAS LOCALMENTE
       useEffect(() => {
         const creds = getSavedPasswords();
         setSavedCreds(creds);
@@ -843,40 +864,44 @@
       }, []);
 
       useEffect(() => {
-        const carregarDados = () => {
-          if (typeof google !== 'undefined' && google.script && google.script.run) {
-            google.script.run
-              .withSuccessHandler((dados) => {
-                if (dados.usuarios && dados.usuarios.length > 0) {
-                  setUsers(dados.usuarios);
-                  if (!initialUser) {
-                    setLoginUser(dados.usuarios[0].name);
-                    setAgendaProfessional(dados.usuarios[0].name);
-                    setProfessional(dados.usuarios[0].name);
-                    const creds = getSavedPasswords();
-                    if (creds[dados.usuarios[0].name]) {
-                      setPassword(creds[dados.usuarios[0].name]);
-                    }
-                  }
+        const carregarDados = async () => {
+          if (!API_URL || API_URL.includes("SEU_LINK_DO_APPS_SCRIPT_AQUI")) {
+            console.warn("Configure a variável API_URL com o link da sua implantação do Apps Script.");
+            return;
+          }
+          const dados = await apiGet();
+          if (dados) {
+            if (dados.usuarios && dados.usuarios.length > 0) {
+              setUsers(dados.usuarios);
+              if (!initialUser) {
+                setLoginUser(dados.usuarios[0].name);
+                setAgendaProfessional(dados.usuarios[0].name);
+                setProfessional(dados.usuarios[0].name);
+                const creds = getSavedPasswords();
+                if (creds[dados.usuarios[0].name]) {
+                  setPassword(creds[dados.usuarios[0].name]);
                 }
-                if (dados.servicos && dados.servicos.length > 0) {
-                  setServices(dados.servicos);
-                  setService(prev => prev || dados.servicos[0].name);
-                }
-                if (dados.agendamentos) {
-                  setAppointments(dados.agendamentos);
-                }
-              })
-              .withFailureHandler((erro) => {
-                console.error('Erro de sincronização:', erro);
-              })
-              .obterDadosIniciais();
+              }
+            }
+            if (dados.servicos && dados.servicos.length > 0) {
+              setServices(dados.servicos);
+              setService(prev => prev || dados.servicos[0].name);
+            }
+            if (dados.agendamentos) {
+              setAppointments(dados.agendamentos);
+            }
           }
         };
 
         carregarDados();
-        const intervalo = setInterval(carregarDados, 30000);
-        return () => clearInterval(intervalo);
+
+        const handleVisibilityChange = () => {
+          if (document.visibilityState === 'visible') {
+            carregarDados();
+          }
+        };
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
       }, []);
 
       const activeUserObj = users.find(u => u.name === currentUser) || users[0] || { name: 'Carol', role: 'Administradora', isAdmin: true };
@@ -953,7 +978,7 @@
         setUserModal(true);
       };
 
-      const handleSaveUser = () => {
+      const handleSaveUser = async () => {
         if (!colabName.trim() || !colabPass.trim()) {
           setToast('Preencha nome e senha da profissional.');
           return;
@@ -966,9 +991,7 @@
           isAdmin: editingUser ? editingUser.isAdmin : false
         };
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.salvarColaborador(dados, editingUser ? editingUser.name : null);
-        }
+        apiPost('salvarColaborador', { dados, nomeAntigo: editingUser ? editingUser.name : null });
 
         if (editingUser) {
           setUsers(users.map(u => u.name === editingUser.name ? dados : u));
@@ -982,7 +1005,7 @@
         window.setTimeout(() => setToast(''), 3000);
       };
 
-      const handleDeleteUser = () => {
+      const handleDeleteUser = async () => {
         if (!editingUser) return;
         if (editingUser.name.toLowerCase() === 'carol') {
           setToast('A administradora Carol não pode ser excluída.');
@@ -990,9 +1013,7 @@
         }
         if (!confirm(`Deseja realmente excluir a profissional ${editingUser.name}?`)) return;
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.excluirColaborador(editingUser.name);
-        }
+        apiPost('excluirColaborador', { nome: editingUser.name });
 
         setUsers(users.filter(u => u.name !== editingUser.name));
         setUserModal(false);
@@ -1015,7 +1036,7 @@
         setServiceModal(true);
       };
 
-      const handleSaveService = () => {
+      const handleSaveService = async () => {
         if (!servName.trim() || !servPrice) {
           setToast('Preencha o nome e o preço do serviço.');
           return;
@@ -1026,9 +1047,7 @@
           price: Number(servPrice) || 0
         };
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.salvarServico(novoServico, editingService ? editingService.name : null);
-        }
+        apiPost('salvarServico', { servico: novoServico, nomeAntigo: editingService ? editingService.name : null });
 
         if (editingService) {
           setServices(services.map(s => s.name === editingService.name ? novoServico : s));
@@ -1042,18 +1061,16 @@
         window.setTimeout(() => setToast(''), 3000);
       };
 
-      const handleDeleteService = () => {
+      const handleDeleteService = async () => {
         if (!editingService) return;
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.excluirServico(editingService.name);
-        }
+        apiPost('excluirServico', { nome: editingService.name });
         setServices(services.filter(s => s.name !== editingService.name));
         setServiceModal(false);
         setToast('Serviço removido.');
         window.setTimeout(() => setToast(''), 3000);
       };
 
-      const addAppointment = () => {
+      const addAppointment = async () => {
         const todayStr = getTodayISO();
 
         if (appDate < todayStr) {
@@ -1095,41 +1112,33 @@
           status: 'agendado'
         };
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run
-            .withSuccessHandler((res) => {
-              if (res && res.sucesso) {
-                setAppointments(prev => [...prev, novoItem]);
-                setAgendaProfessional(professional);
-                setModal(false);
-                setClient('');
-                setToast('Horário agendado com sucesso!');
-              } else {
-                setToast('⚠️ ' + (res?.erro || 'Não foi possível salvar na planilha.'));
-              }
-            })
-            .withFailureHandler((err) => {
-              setToast('⚠️ Erro de permissão: ' + (err.message || 'Verifique a implantação.'));
-            })
-            .salvarAgendamento(novoItem);
-        } else {
+        const res = await apiPost('salvarAgendamento', novoItem);
+        if (res && res.sucesso) {
           setAppointments(prev => [...prev, novoItem]);
+          setAgendaProfessional(professional);
           setModal(false);
+          setClient('');
           setToast('Horário agendado com sucesso!');
+        } else {
+          setToast('⚠️ ' + (res?.erro || 'Não foi possível salvar na planilha.'));
         }
 
         window.setTimeout(() => setToast(''), 3000);
       };
 
-      const toggleAppointmentStatus = (index) => {
+      const toggleAppointmentStatus = async (index) => {
         const item = appointments[index];
         if (!item) return;
 
         const novoStatus = item.status === 'confirmado' ? 'agendado' : 'confirmado';
 
-        if (typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.atualizarStatusAgendamento(item.date, item.time, item.client, item.pro, novoStatus);
-        }
+        apiPost('atualizarStatus', { 
+          date: item.date, 
+          time: item.time, 
+          client: item.client, 
+          pro: item.pro, 
+          novoStatus 
+        });
 
         const updated = [...appointments];
         updated[index] = { ...item, status: novoStatus };
@@ -1138,10 +1147,15 @@
         window.setTimeout(() => setToast(''), 3000);
       };
 
-      const cancelAppointment = (indexToCancel) => {
+      const cancelAppointment = async (indexToCancel) => {
         const item = appointments[indexToCancel];
-        if (item && typeof google !== 'undefined' && google.script && google.script.run) {
-          google.script.run.cancelarAgendamento(item.date, item.time, item.client, item.pro);
+        if (item) {
+          apiPost('cancelarAgendamento', { 
+            date: item.date, 
+            time: item.time, 
+            client: item.client, 
+            pro: item.pro 
+          });
         }
         setAppointments(appointments.filter((_, i) => i !== indexToCancel));
         setDetail(null);
@@ -1170,7 +1184,6 @@
         ['Financeiro', 'wallet']
       ];
 
-      // APLICAÇÃO LOGADA (APP SHELL COM ROLAGEM ISOLADA NO CONTEÚDO)
       return (
         <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
           {/* BARRA LATERAL DESKTOP */}
@@ -1208,9 +1221,8 @@
             )}
           </aside>
 
-          {/* COLUNA PRINCIPAL COM ROLAGEM INTERNA PROTEGIDA */}
+          {/* COLUNA PRINCIPAL COM ROLAGEM ISOLADA */}
           <div className="flex flex-1 flex-col h-full min-w-0 overflow-hidden relative">
-            {/* CABEÇALHO FIXO SUPERIOR */}
             <header className="shrink-0 z-20 flex items-center justify-between border-b border-stone-200/70 bg-[#f8f5f2]/95 px-4 py-3.5 backdrop-blur md:px-8">
               <div className="flex items-center gap-2 lg:hidden">
                 <BrandMark small/>
@@ -1237,7 +1249,6 @@
               </div>
             </header>
 
-            {/* ÁREA DE CONTEÚDO QUE ROLA LIVREMENTE SEM MOVER O MENU */}
             <main className="flex-1 overflow-y-auto overscroll-y-contain px-0 pb-28 lg:pb-12" style={{ WebkitOverflowScrolling: 'touch' }}>
               <div className="w-full max-w-5xl mx-auto">
                 {tab === 'Agenda' ? (
@@ -1249,7 +1260,6 @@
                       </div>
                     </section>
 
-                    {/* CARROSSEL DE DIAS + CALENDÁRIO COM min-w-0 QUE ELIMINA A OSCILAÇÃO */}
                     <section className="mb-6 flex items-center gap-2 w-full overflow-hidden">
                       <button 
                         onClick={() => changeWeek(-7)} 
@@ -1283,7 +1293,6 @@
                         <Icon name="chevron" size={18} />
                       </button>
 
-                      {/* BOTÃO DO CALENDÁRIO FIXO AO LADO DOS DIAS */}
                       <button
                         type="button"
                         onClick={() => setDateModal(true)}
@@ -1297,7 +1306,6 @@
                       </button>
                     </section>
 
-                    {/* Seleção de Profissional */}
                     <section className="mb-5 w-full">
                       <div className="mb-2.5 flex items-center justify-between">
                         <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Agendas da Equipe</p>
@@ -1325,7 +1333,6 @@
                       </div>
                     </section>
 
-                    {/* Lista de Atendimentos */}
                     <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
                       <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between">
                         <div>
@@ -1379,21 +1386,20 @@
                   <OtherPage 
                     tab={tab} 
                     isAdmin={isAdmin} 
-                    currentUser={currentUser}
+                    currentUser={currentUser} 
                     users={users} 
-                    services={services}
-                    appointments={appointments}
+                    services={services} 
+                    appointments={appointments} 
                     onOpenUserModal={handleOpenUserModal} 
-                    onEditUser={handleOpenUserModal}
-                    onOpenServiceModal={handleOpenServiceModal}
-                    onEditService={handleOpenServiceModal}
-                    onSelectAppointment={(idx) => setDetail(idx)}
+                    onEditUser={handleOpenUserModal} 
+                    onOpenServiceModal={handleOpenServiceModal} 
+                    onEditService={handleOpenServiceModal} 
+                    onSelectAppointment={(idx) => setDetail(idx)} 
                   />
                 )}
               </div>
             </main>
 
-            {/* BOTÃO FLUTUANTE "+ NOVO HORÁRIO" (DESKTOP E MOBILE) */}
             {tab === 'Agenda' && (
               <button
                 onClick={() => setModal(true)}
@@ -1406,7 +1412,6 @@
               </button>
             )}
 
-            {/* BARRA INFERIOR MOBILE TOTALMENTE FIXA (SHRINK-0) - NUNCA SE MOVE OU SAMBA */}
             <nav 
               className="shrink-0 lg:hidden z-30 flex justify-around border-t border-stone-200 bg-white/98 backdrop-blur px-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 w-full shadow-lg"
               style={{ willChange: 'transform', transform: 'translateZ(0)' }}
@@ -1424,7 +1429,7 @@
             </nav>
           </div>
 
-          {/* MODAL DO CALENDÁRIO COM ALINHAMENTO E CAIXA DE DATA 100% CENTRALIZADOS */}
+          {/* MODAL DO CALENDÁRIO */}
           {dateModal && (
             <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
