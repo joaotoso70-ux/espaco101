@@ -1,0 +1,1685 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>Espaço 101 - Gestão</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"DM Sans"', 'sans-serif'],
+            serif: ['"Playfair Display"', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden; /* Trava a janela global para o menu nunca tremer */
+      font-family: 'DM Sans', sans-serif;
+      background-color: #f8f5f2;
+      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #root {
+      width: 100%;
+      height: 100%;
+      height: 100dvh;
+      overflow: hidden;
+    }
+    /* Estilização centralizada e sem distorção dos inputs de data no iOS */
+    input[type="date"], input[type="time"] {
+      width: 100% !important;
+      max-width: 100% !important;
+      box-sizing: border-box !important;
+      text-align: center;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      appearance: none;
+    }
+    input[type="date"]::-webkit-date-and-time-value {
+      text-align: center;
+      margin: 0 auto;
+    }
+    button, select, input {
+      touch-action: manipulation;
+    }
+    button, select {
+      cursor: pointer;
+    }
+    [scrollbar-width:none]::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="antialiased">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useMemo } = React;
+
+    function Icon({ name, size = 21 }) {
+      const paths = {
+        calendar: <><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4m8-4v4M3 10h18"/></>,
+        chevron: <path d="m9 18 6-6-6-6"/>,
+        chevronLeft: <path d="m15 18-6-6 6-6"/>,
+        clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
+        home: <><path d="m3 11 9-8 9 8"/><path d="M5 10v11h14V10M9 21v-7h6v7"/></>,
+        plus: <path d="M12 5v14M5 12h14"/>,
+        search: <><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,
+        sparkles: <><path d="m12 3 1.2 3.8L17 8l-3.8 1.2L12 13l-1.2-3.8L7 8l3.8-1.2L12 3Z"/><path d="m19 14 .7 2.3L22 17l-2.3.7L19 20l-.7-2.3L16 17l2.3-.7L19 14ZM5 13l.8 2.2L8 16l-2.2.8L5 19l-.8-2.2L2 16l2.2-.8L5 13Z"/></>,
+        users: <><circle cx="9" cy="8" r="3"/><path d="M3 20v-2a6 6 0 0 1 12 0v2M16 5a3 3 0 0 1 0 6m2 3a5 5 0 0 1 3 4v2"/></>,
+        wallet: <><path d="M4 6h15a2 2 0 0 1 2 2v11H4a2 2 0 0 1-2-2V6a3 3 0 0 1 3-3h13v3"/><path d="M16 11h5v4h-5a2 2 0 0 1 0-4Z"/></>,
+        x: <path d="m6 6 12 12M18 6 6 18"/>,
+        userPlus: <><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="8.5" cy="7" r="4"/><line x1="20" y1="8" x2="20" y2="14"/><line x1="23" y1="11" x2="17" y2="11"/></>,
+        edit: <><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/><path d="m15 5 4 4"/></>,
+        trash: <><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"/></>,
+        check: <path d="M20 6 9 17l-5-5"/>,
+        history: <><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></>,
+        tag: <><path d="M12 2H2v10l9.29 9.29c.94.94 2.48.94 3.42 0l6.58-6.58c.94-.94.94-2.48 0-3.42L12 2Z"/><circle cx="7" cy="7" r=".5" fill="currentColor"/></>
+      };
+      return (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          {paths[name]}
+        </svg>
+      );
+    }
+
+    function BrandMark({ small = false }) {
+      return (
+        <svg className={`shrink-0 drop-shadow-[0_4px_8px_rgba(78,40,48,.18)] ${small ? 'w-10 h-10' : 'w-11 h-11'}`} viewBox="0 0 64 64">
+          <circle cx="32" cy="32" r="31" fill="#623942"/>
+          <circle cx="32" cy="32" r="26.5" fill="none" stroke="#e9b7ae" strokeWidth="1"/>
+          <path d="M15 21.5c4.5-6 10.5-9 18-9 7.2 0 13.1 2.6 17.6 7.8" fill="none" stroke="#e9b7ae" strokeWidth="1.2" strokeLinecap="round"/>
+          <path d="M14.8 42.7c4.6 5.9 10.6 8.8 18 8.8 7.1 0 13-2.6 17.5-7.7" fill="none" stroke="#e9b7ae" strokeWidth="1.2" strokeLinecap="round"/>
+          <text x="13.5" y="43" fill="#f8e9e5" fontFamily="'Playfair Display', serif" fontSize="34" fontWeight="600" fontStyle="italic">C</text>
+          <text x="29" y="43.5" fill="#e9b7ae" fontFamily="'Playfair Display', serif" fontSize="33" fontWeight="700" fontStyle="italic">R</text>
+          <path d="M28 45.5c5 2.2 10.8 2.2 17.3-.2" fill="none" stroke="#f8e9e5" strokeWidth=".8" strokeLinecap="round"/>
+        </svg>
+      );
+    }
+
+    const formatCurrency = (val) => Number(val || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const getTodayISO = () => {
+      const d = new Date();
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    function formatTime(val) {
+      if (!val) return '09:00';
+      const str = String(val).trim();
+      if (str.includes('1899') || str.includes('GMT') || str.includes('(')) {
+        const d = new Date(val);
+        if (!isNaN(d.getTime())) {
+          return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+        }
+      }
+      if (str.includes(':')) {
+        const parts = str.split(':');
+        return `${parts[0].padStart(2, '0')}:${parts[1].padStart(2, '0')}`.slice(0, 5);
+      }
+      return str.slice(0, 5);
+    }
+
+    const timeToMinutes = (tStr) => {
+      if (!tStr) return 0;
+      const clean = formatTime(tStr);
+      const [h, m] = clean.split(':').map(Number);
+      return h * 60 + m;
+    };
+
+    const parseMinutes = (timeStr) => {
+      const num = parseInt(timeStr, 10);
+      return isNaN(num) ? 60 : num;
+    };
+
+    const addMinutesToTime = (timeStr, minutes) => {
+      const clean = formatTime(timeStr);
+      const [h, m] = clean.split(':').map(Number);
+      const total = h * 60 + m + minutes;
+      const endH = Math.floor(total / 60) % 24;
+      const endM = total % 60;
+      return `${String(endH).padStart(2, '0')}:${String(endM).padStart(2, '0')}`;
+    };
+
+    function getWeekDays(referenceDateStr) {
+      const [y, m, d] = (referenceDateStr || getTodayISO()).split('-').map(Number);
+      const curr = new Date(y, m - 1, d);
+      const dayOfWeek = curr.getDay();
+      const distanceToMonday = (dayOfWeek + 6) % 7;
+      const monday = new Date(curr);
+      monday.setDate(curr.getDate() - distanceToMonday);
+
+      const weekNames = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+      const days = [];
+      for (let i = 0; i < 7; i++) {
+        const temp = new Date(monday);
+        temp.setDate(monday.getDate() + i);
+        const iso = `${temp.getFullYear()}-${String(temp.getMonth() + 1).padStart(2, '0')}-${String(temp.getDate()).padStart(2, '0')}`;
+        days.push({
+          week: weekNames[i],
+          date: String(temp.getDate()).padStart(2, '0'),
+          fullDate: iso,
+          active: iso === referenceDateStr
+        });
+      }
+      return days;
+    }
+
+    const getSavedPasswords = () => {
+      try {
+        return JSON.parse(localStorage.getItem('espaco101_saved_creds') || '{}');
+      } catch(e) {
+        return {};
+      }
+    };
+
+    const savePasswordForUser = (userName, pass) => {
+      try {
+        const creds = getSavedPasswords();
+        creds[userName] = pass;
+        localStorage.setItem('espaco101_saved_creds', JSON.stringify(creds));
+      } catch(e) {}
+    };
+
+    const removePasswordForUser = (userName) => {
+      try {
+        const creds = getSavedPasswords();
+        delete creds[userName];
+        localStorage.setItem('espaco101_saved_creds', JSON.stringify(creds));
+      } catch(e) {}
+    };
+
+    function OtherPage({ 
+      tab, 
+      isAdmin,
+      currentUser,
+      users, 
+      services, 
+      appointments, 
+      onOpenUserModal, 
+      onEditUser,
+      onOpenServiceModal,
+      onEditService,
+      onSelectAppointment
+    }) {
+      const [clientSubTab, setClientSubTab] = useState('agendadas');
+      const [selectedClientPro, setSelectedClientPro] = useState(currentUser || users[0]?.name || 'Carol');
+      const [selectedHistPro, setSelectedHistPro] = useState('Todos');
+
+      const [periodFilter, setPeriodFilter] = useState('mes');
+      const [customStart, setCustomStart] = useState(getTodayISO());
+      const [customEnd, setCustomEnd] = useState(getTodayISO());
+      const [selectedPro, setSelectedPro] = useState(isAdmin ? 'Todos' : currentUser);
+      const [discountPercent, setDiscountPercent] = useState(0);
+
+      useEffect(() => {
+        if (!isAdmin) {
+          setSelectedPro(currentUser);
+        }
+      }, [isAdmin, currentUser]);
+
+      const effectivePro = isAdmin ? selectedPro : currentUser;
+
+      const futureAppointmentsByPro = useMemo(() => {
+        const todayStr = getTodayISO();
+        return appointments
+          .filter(a => a.pro === selectedClientPro && a.date >= todayStr)
+          .sort((a, b) => {
+            const cmpDate = a.date.localeCompare(b.date);
+            if (cmpDate !== 0) return cmpDate;
+            return a.time.localeCompare(b.time);
+          });
+      }, [appointments, selectedClientPro]);
+
+      const pastAppointments = useMemo(() => {
+        const todayStr = getTodayISO();
+        return appointments
+          .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro))
+          .sort((a, b) => {
+            const cmpDate = b.date.localeCompare(a.date);
+            if (cmpDate !== 0) return cmpDate;
+            return b.time.localeCompare(a.time);
+          });
+      }, [appointments, selectedHistPro]);
+
+      const filteredAppointments = useMemo(() => {
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+
+        return appointments.filter(app => {
+          if (!app.date) return false;
+          const [ano, mes, dia] = app.date.split('-').map(Number);
+          const appDate = new Date(ano, mes - 1, dia);
+
+          if (effectivePro !== 'Todos' && app.pro !== effectivePro) {
+            return false;
+          }
+
+          if (periodFilter === 'hoje') {
+            return app.date === getTodayISO();
+          }
+
+          if (periodFilter === 'semana') {
+            const dayOfWeek = today.getDay();
+            const startOfWeek = new Date(startOfToday);
+            startOfWeek.setDate(today.getDate() - ((dayOfWeek + 6) % 7));
+            const endOfWeek = new Date(startOfWeek);
+            endOfWeek.setDate(startOfWeek.getDate() + 6);
+            return appDate >= startOfWeek && appDate <= endOfWeek;
+          }
+
+          if (periodFilter === 'mes') {
+            return appDate.getFullYear() === today.getFullYear() && appDate.getMonth() === today.getMonth();
+          }
+
+          if (periodFilter === 'custom') {
+            return app.date >= customStart && app.date <= customEnd;
+          }
+
+          return true;
+        });
+      }, [appointments, periodFilter, customStart, customEnd, effectivePro]);
+
+      const faturamentoBruto = useMemo(() => {
+        return filteredAppointments.reduce((acc, curr) => acc + (Number(curr.price) || 0), 0);
+      }, [filteredAppointments]);
+
+      const valorDesconto = (faturamentoBruto * (Number(discountPercent) || 0)) / 100;
+      const faturamentoLiquido = faturamentoBruto - valorDesconto;
+
+      const revenueByPro = useMemo(() => {
+        if (!isAdmin) return [];
+        const map = {};
+        users.forEach(u => { map[u.name] = 0; });
+        filteredAppointments.forEach(app => {
+          map[app.pro] = (map[app.pro] || 0) + (Number(app.price) || 0);
+        });
+        return Object.entries(map).map(([name, total]) => {
+          const pct = faturamentoBruto > 0 ? (total / faturamentoBruto) * 100 : 0;
+          return { name, total, pct: pct.toFixed(0) };
+        });
+      }, [filteredAppointments, users, faturamentoBruto, isAdmin]);
+
+      if (tab === 'Início') return (
+        <div className="w-full px-4 py-6 md:px-8">
+          <p className="text-sm text-stone-500">Painel Geral</p>
+          <h1 className="mt-1 font-serif text-3xl font-bold">Visão geral</h1>
+          <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-4">
+            {[
+              ['Hoje', appointments.filter(a => a.date === getTodayISO()).length + ' agendamentos', 'calendar'],
+              ['Equipe', users.length + ' profissionais', 'users'],
+              ['Serviços', services.length + ' no catálogo', 'sparkles'],
+              ['Receita Hoje', isAdmin 
+                ? formatCurrency(appointments.filter(a => a.date === getTodayISO()).reduce((a,c) => a + c.price, 0))
+                : formatCurrency(appointments.filter(a => a.date === getTodayISO() && a.pro === currentUser).reduce((a,c) => a + c.price, 0)), 
+               'wallet']
+            ].map(([label, value, icon]) => (
+              <div key={label} className="rounded-3xl border border-stone-200/70 bg-white p-4">
+                <div className="grid w-9 h-9 place-items-center rounded-full bg-[#faf0ed] text-[#7c4851]">
+                  <Icon name={icon} size={18}/>
+                </div>
+                <p className="mt-4 text-xs text-stone-500">{label}</p>
+                <p className="mt-1 font-serif text-xl font-bold">{value}</p>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-3xl bg-[#6f424a] p-6 text-white">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/50">Equipe ativa</p>
+                <h2 className="mt-1 font-serif text-2xl font-bold">{users.length} profissionais cadastradas</h2>
+              </div>
+              {isAdmin && (
+                <button onClick={() => onOpenUserModal(null)} className="flex items-center gap-2 rounded-full bg-[#eeb9af] px-4 py-2 text-xs font-bold text-[#4e2830] hover:bg-[#e4a79b]">
+                  <Icon name="userPlus" size={16}/> + Cadastrar
+                </button>
+              )}
+            </div>
+            
+            <p className="mt-3 text-xs text-white/60">
+              {isAdmin ? 'Clique em uma profissional para editar seus dados ou excluí-la.' : 'Equipe do salão.'}
+            </p>
+
+            <div className="mt-4 flex flex-wrap gap-2.5">
+              {users.map(u => (
+                <div 
+                  key={u.name} 
+                  onClick={() => isAdmin && onEditUser(u)}
+                  className={`flex items-center gap-2 rounded-full bg-white/10 py-1.5 pl-2 pr-3.5 transition ${isAdmin ? 'hover:bg-white/25 cursor-pointer ring-1 ring-white/10' : ''}`}
+                >
+                  <span className="grid w-8 h-8 place-items-center rounded-full bg-[#eeb9af] text-xs font-bold text-[#4e2830]">{(u.name || 'P')[0]}</span>
+                  <div className="text-left">
+                    <span className="block text-xs font-bold leading-tight flex items-center gap-1.5">
+                      {u.name}
+                      {isAdmin && <Icon name="edit" size={12}/>}
+                    </span>
+                    <span className="block text-[10px] text-white/60">{u.role}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      );
+
+      // ABA CLIENTES: AGENDADAS & ATENDIDAS
+      if (tab === 'Clientes') {
+        const todayStr = getTodayISO();
+
+        return (
+          <div className="w-full px-4 py-6 md:px-8">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+              <div>
+                <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Gestão de Clientes</p>
+                <h1 className="mt-1 font-serif text-3xl font-bold">
+                  {clientSubTab === 'agendadas' ? 'Clientes Agendadas' : 'Clientes Atendidas'}
+                </h1>
+              </div>
+
+              <div className="inline-flex rounded-2xl bg-stone-200/80 p-1.5 self-start sm:self-auto shadow-inner">
+                <button
+                  type="button"
+                  onClick={() => setClientSubTab('agendadas')}
+                  className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}
+                >
+                  <Icon name="calendar" size={16}/> Clientes Agendadas
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setClientSubTab('atendidos')}
+                  className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}
+                >
+                  <Icon name="history" size={16}/> Clientes Atendidas
+                </button>
+              </div>
+            </div>
+
+            {clientSubTab === 'agendadas' ? (
+              <div className="w-full overflow-hidden">
+                <p className="text-xs font-bold uppercase tracking-wider text-stone-400 mb-2.5">
+                  Selecione a profissional para ver sua agenda futura
+                </p>
+
+                <div className="flex flex-wrap gap-2 mb-6">
+                  {users.map(u => {
+                    const countFuturos = appointments.filter(a => a.pro === u.name && a.date >= todayStr).length;
+                    const isSelected = selectedClientPro === u.name;
+                    return (
+                      <button
+                        key={u.name}
+                        onClick={() => setSelectedClientPro(u.name)}
+                        className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition ${isSelected ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' : 'border-stone-200 bg-white/70 hover:bg-white'}`}
+                      >
+                        <span className="grid w-8 h-8 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                          {(u.name || 'P')[0]}
+                        </span>
+                        <div>
+                          <span className="block text-xs font-bold text-stone-800">{u.name}</span>
+                          <span className="block text-[10px] text-stone-400">{countFuturos} futuro(s)</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm">
+                  <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="font-serif text-lg font-bold">Agendamentos futuros de {selectedClientPro}</h2>
+                      <p className="text-xs text-stone-400">A partir de hoje ({todayStr.split('-').reverse().join('/')})</p>
+                    </div>
+                    <span className="text-xs font-bold text-[#6f424a] bg-[#faf0ed] px-3 py-1 rounded-full">
+                      {futureAppointmentsByPro.length} futuro(s)
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-stone-100">
+                    {futureAppointmentsByPro.map((item) => {
+                      const isToday = item.date === todayStr;
+                      const globalIndex = appointments.indexOf(item);
+
+                      return (
+                        <div
+                          key={`${item.date}-${item.time}-${item.client}`}
+                          onClick={() => onSelectAppointment(globalIndex)}
+                          className="flex items-center justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-rose-100 text-xs font-bold text-rose-700">
+                              {String(item.client).slice(0, 2).toUpperCase()}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
+                              <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
+                              <p className="text-[11px] font-semibold text-[#6f424a] mt-0.5">
+                                📅 {item.date.split('-').reverse().join('/')} {isToday ? '(Hoje)' : ''} às {formatTime(item.time)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full flex items-center gap-1 ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                              {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                            </span>
+                            <Icon name="chevron" size={16} />
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {futureAppointmentsByPro.length === 0 && (
+                      <div className="p-12 text-center text-stone-400">
+                        <Icon name="calendar" size={24} className="mx-auto mb-2 text-stone-300"/>
+                        <p className="font-bold text-stone-700">Nenhum agendamento futuro</p>
+                        <p className="text-xs text-stone-400 mt-1">{selectedClientPro} não tem clientes marcadas de hoje em diante.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="w-full overflow-hidden">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-stone-400">
+                    Histórico de atendimentos concluídos
+                  </p>
+                  
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-stone-600">Filtrar:</span>
+                    <select
+                      value={selectedHistPro}
+                      onChange={e => setSelectedHistPro(e.target.value)}
+                      className="rounded-xl border border-stone-200 bg-white px-3 py-1.5 text-xs font-bold outline-none"
+                    >
+                      <option value="Todos">Todas as Profissionais</option>
+                      {users.map(u => <option key={u.name} value={u.name}>{u.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm">
+                  <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <h2 className="font-serif text-lg font-bold">Clientes Atendidas Anteriormente</h2>
+                      <p className="text-xs text-stone-400">Atendimentos concluídos antes de hoje ({todayStr.split('-').reverse().join('/')})</p>
+                    </div>
+                    <span className="text-xs font-bold text-stone-600 bg-stone-100 px-3 py-1 rounded-full">
+                      {pastAppointments.length} atendida(s)
+                    </span>
+                  </div>
+
+                  <div className="divide-y divide-stone-100">
+                    {pastAppointments.map((item) => {
+                      const globalIndex = appointments.indexOf(item);
+                      return (
+                        <div
+                          key={`${item.date}-${item.time}-${item.client}`}
+                          onClick={() => onSelectAppointment(globalIndex)}
+                          className="flex items-center justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3"
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-stone-100 text-xs font-bold text-stone-700">
+                              {String(item.client).slice(0, 2).toUpperCase()}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
+                              <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
+                              <p className="text-[11px] text-stone-400 mt-0.5">
+                                Em {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · {item.pro}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
+                              Concluído
+                            </span>
+                            <Icon name="chevron" size={16} />
+                          </div>
+                        </div>
+                      );
+                    })}
+
+                    {pastAppointments.length === 0 && (
+                      <div className="p-12 text-center text-stone-400">
+                        <Icon name="history" size={24} className="mx-auto mb-2 text-stone-300"/>
+                        <p className="font-bold text-stone-700">Nenhum atendimento anterior</p>
+                        <p className="text-xs text-stone-400 mt-1">Os atendimentos de dias passados aparecerão aqui.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
+
+      if (tab === 'Serviços') return (
+        <div className="w-full px-4 py-6 md:px-8">
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-sm text-stone-500">Tabela de Preços</p>
+              <h1 className="mt-1 font-serif text-3xl font-bold">Serviços</h1>
+            </div>
+            {isAdmin && (
+              <button onClick={() => onOpenServiceModal(null)} className="flex items-center gap-2 rounded-full bg-[#6f424a] px-4 py-2.5 text-sm font-bold text-white shadow-sm hover:bg-[#5b363d]">
+                <Icon name="plus" size={17}/> + Serviço
+              </button>
+            )}
+          </div>
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-2">
+            {services.map((item) => (
+              <div 
+                key={item.name} 
+                onClick={() => isAdmin && onEditService(item)}
+                className={`flex items-center justify-between rounded-3xl border border-stone-200/70 bg-white p-5 transition ${isAdmin ? 'hover:border-[#be7d85] hover:shadow-md cursor-pointer' : ''}`}
+              >
+                <div className="flex items-center gap-4">
+                  <span className="grid w-12 h-12 place-items-center rounded-2xl bg-rose-100 text-rose-700">
+                    <Icon name="sparkles" size={20}/>
+                  </span>
+                  <div>
+                    <h3 className="font-serif text-lg font-bold">{item.name}</h3>
+                    <p className="mt-0.5 text-xs text-stone-400">{item.time}</p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <span className="text-base font-bold text-stone-800">{formatCurrency(item.price)}</span>
+                  {isAdmin && (
+                    <span className="block text-[10px] text-stone-400 mt-1 flex items-center justify-end gap-1">
+                      <Icon name="edit" size={12}/> Editar
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+
+      // ABA FINANCEIRO
+      return (
+        <div className="w-full px-4 py-6 md:px-8">
+          <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2">
+                <p className="text-sm text-stone-500">Gestão de Receitas</p>
+                <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#7c4851]">
+                  {isAdmin ? 'Visão Geral' : `Apenas meus ganhos (${currentUser})`}
+                </span>
+              </div>
+              <h1 className="mt-1 font-serif text-3xl font-bold">Financeiro & Produção</h1>
+            </div>
+
+            <div className="flex flex-wrap gap-1.5 rounded-2xl bg-stone-200/60 p-1.5">
+              {[
+                ['hoje', 'Hoje'],
+                ['semana', 'Semana'],
+                ['mes', 'Mês'],
+                ['custom', 'Período']
+              ].map(([key, label]) => (
+                <button
+                  key={key}
+                  onClick={() => setPeriodFilter(key)}
+                  className={`rounded-xl px-3.5 py-1.5 text-xs font-bold transition ${periodFilter === key ? 'bg-white text-[#6f424a] shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {periodFilter === 'custom' && (
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 border border-stone-200/70">
+              <span className="text-xs font-bold text-stone-600">De:</span>
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="rounded-xl border border-stone-200 px-3 py-1.5 text-xs outline-none"/>
+              <span className="text-xs font-bold text-stone-600">Até:</span>
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="rounded-xl border border-stone-200 px-3 py-1.5 text-xs outline-none"/>
+            </div>
+          )}
+
+          <div className="mt-6 rounded-3xl bg-[#6f424a] p-6 text-white shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <p className="text-xs uppercase tracking-widest text-white/55">
+                  Faturamento Líquido {effectivePro !== 'Todos' ? `de ${effectivePro}` : '(Salão Completo)'}
+                </p>
+                <p className="mt-2 font-serif text-4xl font-bold">{formatCurrency(faturamentoLiquido)}</p>
+                <p className="mt-2 text-xs text-[#f2c4bb]">
+                  Bruto: {formatCurrency(faturamentoBruto)} {discountPercent > 0 && `(Desconto de ${discountPercent}% = -${formatCurrency(valorDesconto)})`}
+                </p>
+              </div>
+              <div className="rounded-2xl bg-white/10 p-4 border border-white/10 text-right">
+                <span className="text-xs text-white/60 block">Atendimentos</span>
+                <span className="text-2xl font-serif font-bold">{filteredAppointments.length}</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4 rounded-3xl border border-stone-200/70 bg-white p-5">
+            <div className="flex items-center gap-2">
+              <div className="grid w-8 h-8 place-items-center rounded-full bg-[#faf0ed] text-[#7c4851]">
+                <Icon name="tag" size={17}/>
+              </div>
+              <div>
+                <h3 className="font-serif text-lg font-bold">Simular e Aplicar Desconto</h3>
+                <p className="text-xs text-stone-400">
+                  {isAdmin 
+                    ? 'Selecione quem receberá o desconto e a porcentagem.' 
+                    : 'Aplique ou simule descontos sobre a sua própria produção.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="text-xs font-bold text-stone-600 block mb-1">
+                  Profissional {isAdmin ? '' : '(Seu Perfil)'}
+                </label>
+                {isAdmin ? (
+                  <select 
+                    value={selectedPro} 
+                    onChange={e => setSelectedPro(e.target.value)}
+                    className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm outline-none"
+                  >
+                    <option value="Todos">Todas as Profissionais (Geral)</option>
+                    {users.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role})</option>)}
+                  </select>
+                ) : (
+                  <div className="rounded-xl border border-stone-200 bg-stone-100 px-3 py-2.5 text-sm font-bold text-stone-700">
+                    {currentUser} (Apenas sua produção)
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs font-bold text-stone-600 block mb-1">Porcentagem de Desconto (%)</label>
+                <div className="flex items-center gap-2">
+                  {[0, 10, 20, 30].map((v) => (
+                    <button
+                      key={v}
+                      onClick={() => setDiscountPercent(v)}
+                      className={`flex-1 rounded-xl border py-2 text-xs font-bold transition ${discountPercent === v ? 'border-[#6f424a] bg-[#6f424a] text-white' : 'border-stone-200 bg-stone-50 text-stone-600'}`}
+                    >
+                      {v}%
+                    </button>
+                  ))}
+                  <div className="flex-1 relative">
+                    <input
+                      type="number"
+                      min="0"
+                      max="100"
+                      value={discountPercent}
+                      onChange={e => setDiscountPercent(Number(e.target.value))}
+                      placeholder="Outro %"
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold text-center outline-none bg-stone-50"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-2xl bg-[#faf3f1] p-4 text-xs space-y-2">
+              <div className="flex justify-between text-stone-600">
+                <span>Produção Bruta ({effectivePro}):</span>
+                <span className="font-bold">{formatCurrency(faturamentoBruto)}</span>
+              </div>
+              <div className="flex justify-between text-red-600">
+                <span>Desconto ({discountPercent}%):</span>
+                <span className="font-bold">− {formatCurrency(valorDesconto)}</span>
+              </div>
+              <div className="flex justify-between border-t border-rose-200 pt-2 text-stone-900 text-sm font-bold">
+                <span>Valor após Desconto:</span>
+                <span className="font-serif text-base">{formatCurrency(faturamentoLiquido)}</span>
+              </div>
+            </div>
+          </div>
+
+          {isAdmin && (
+            <div className="mt-4 rounded-3xl border border-stone-200/70 bg-white p-5">
+              <h3 className="font-serif text-lg font-bold">Faturamento Comparado por Colaboradora</h3>
+              <p className="text-xs text-stone-400">Visão restrita da administração</p>
+              <div className="mt-4 space-y-4">
+                {revenueByPro.map(({ name, total, pct }) => (
+                  <div key={name}>
+                    <div className="flex justify-between text-sm">
+                      <span className="font-semibold text-stone-800">{name}</span>
+                      <span className="font-bold text-stone-900">{formatCurrency(total)} ({pct}%)</span>
+                    </div>
+                    <div className="mt-1.5 h-2 rounded-full bg-stone-100 overflow-hidden">
+                      <div className="h-full bg-[#be7d85] rounded-full" style={{ width: `${pct}%` }}></div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    function App() {
+      const getSavedUser = () => {
+        try {
+          return localStorage.getItem('espaco101_user_session') || '';
+        } catch(e) {
+          return '';
+        }
+      };
+
+      const initialUser = getSavedUser();
+      const [currentUser, setCurrentUser] = useState(initialUser || 'Carol');
+      const [loggedIn, setLoggedIn] = useState(!!initialUser);
+
+      // INÍCIO COMO ABA PADRÃO
+      const [tab, setTab] = useState('Início');
+      const [users, setUsers] = useState([{ name: 'Carol', role: 'Administradora', password: '812463', isAdmin: true }]);
+      const [services, setServices] = useState([]);
+      const [appointments, setAppointments] = useState([]);
+
+      const [loginUser, setLoginUser] = useState(initialUser || 'Carol');
+      const [password, setPassword] = useState('');
+      const [rememberPass, setRememberPass] = useState(true);
+      const [savedCreds, setSavedCreds] = useState({});
+      const [loginError, setLoginError] = useState('');
+
+      const [modal, setModal] = useState(false);
+      const [dateModal, setDateModal] = useState(false);
+      const [userModal, setUserModal] = useState(false);
+      const [editingUser, setEditingUser] = useState(null);
+      const [serviceModal, setServiceModal] = useState(false);
+      const [editingService, setEditingService] = useState(null);
+      const [toast, setToast] = useState('');
+      const [detail, setDetail] = useState(null);
+
+      const [appDate, setAppDate] = useState(getTodayISO());
+      const [time, setTime] = useState('09:00');
+      const [client, setClient] = useState('');
+      const [service, setService] = useState('');
+      const [professional, setProfessional] = useState(initialUser || 'Carol');
+      const [agendaProfessional, setAgendaProfessional] = useState(initialUser || 'Carol');
+
+      const [colabName, setColabName] = useState('');
+      const [colabRole, setColabRole] = useState('');
+      const [colabPass, setColabPass] = useState('');
+
+      const [servName, setServName] = useState('');
+      const [servTime, setServTime] = useState('60 min');
+      const [servPrice, setServPrice] = useState('100');
+
+      // CARREGA SENHAS SALVAS LOCALMENTE
+      useEffect(() => {
+        const creds = getSavedPasswords();
+        setSavedCreds(creds);
+        if (creds[loginUser]) {
+          setPassword(creds[loginUser]);
+        }
+      }, []);
+
+      useEffect(() => {
+        const carregarDados = () => {
+          if (typeof google !== 'undefined' && google.script && google.script.run) {
+            google.script.run
+              .withSuccessHandler((dados) => {
+                if (dados.usuarios && dados.usuarios.length > 0) {
+                  setUsers(dados.usuarios);
+                  if (!initialUser) {
+                    setLoginUser(dados.usuarios[0].name);
+                    setAgendaProfessional(dados.usuarios[0].name);
+                    setProfessional(dados.usuarios[0].name);
+                    const creds = getSavedPasswords();
+                    if (creds[dados.usuarios[0].name]) {
+                      setPassword(creds[dados.usuarios[0].name]);
+                    }
+                  }
+                }
+                if (dados.servicos && dados.servicos.length > 0) {
+                  setServices(dados.servicos);
+                  setService(prev => prev || dados.servicos[0].name);
+                }
+                if (dados.agendamentos) {
+                  setAppointments(dados.agendamentos);
+                }
+              })
+              .withFailureHandler((erro) => {
+                console.error('Erro de sincronização:', erro);
+              })
+              .obterDadosIniciais();
+          }
+        };
+
+        carregarDados();
+        const intervalo = setInterval(carregarDados, 30000);
+        return () => clearInterval(intervalo);
+      }, []);
+
+      const activeUserObj = users.find(u => u.name === currentUser) || users[0] || { name: 'Carol', role: 'Administradora', isAdmin: true };
+      const isAdmin = activeUserObj?.isAdmin;
+
+      const handleSelectLoginUser = (name) => {
+        setLoginUser(name);
+        setLoginError('');
+        const creds = getSavedPasswords();
+        if (creds[name]) {
+          setPassword(creds[name]);
+        } else {
+          setPassword('');
+        }
+      };
+
+      const handleLogin = () => {
+        const found = users.find(u => u.name === loginUser);
+        if (!found || found.password !== password) {
+          setLoginError('Senha incorreta.');
+          return;
+        }
+
+        try {
+          localStorage.setItem('espaco101_user_session', found.name);
+          if (rememberPass) {
+            savePasswordForUser(found.name, password);
+            setSavedCreds(getSavedPasswords());
+          } else {
+            removePasswordForUser(found.name);
+            setSavedCreds(getSavedPasswords());
+          }
+        } catch(e) {}
+
+        setCurrentUser(found.name);
+        setAgendaProfessional(found.name);
+        setProfessional(found.name);
+        setLoggedIn(true);
+        setPassword('');
+        setLoginError('');
+      };
+
+      const handleLogout = () => {
+        try {
+          localStorage.removeItem('espaco101_user_session');
+        } catch(e) {}
+        setLoggedIn(false);
+        setPassword('');
+        setLoginError('');
+        setTab('Início');
+        setDetail(null);
+        setModal(false);
+        setUserModal(false);
+        setServiceModal(false);
+        
+        const creds = getSavedPasswords();
+        if (creds[loginUser]) {
+          setPassword(creds[loginUser]);
+        }
+      };
+
+      const handleOpenUserModal = (userToEdit = null) => {
+        if (userToEdit) {
+          setEditingUser(userToEdit);
+          setColabName(userToEdit.name);
+          setColabRole(userToEdit.role);
+          setColabPass(userToEdit.password);
+        } else {
+          setEditingUser(null);
+          setColabName('');
+          setColabRole('');
+          setColabPass('');
+        }
+        setUserModal(true);
+      };
+
+      const handleSaveUser = () => {
+        if (!colabName.trim() || !colabPass.trim()) {
+          setToast('Preencha nome e senha da profissional.');
+          return;
+        }
+
+        const dados = {
+          name: colabName.trim(),
+          role: colabRole.trim() || 'Profissional',
+          password: colabPass.trim(),
+          isAdmin: editingUser ? editingUser.isAdmin : false
+        };
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.salvarColaborador(dados, editingUser ? editingUser.name : null);
+        }
+
+        if (editingUser) {
+          setUsers(users.map(u => u.name === editingUser.name ? dados : u));
+          setToast('Dados da profissional atualizados!');
+        } else {
+          setUsers([...users, dados]);
+          setToast('Profissional cadastrada!');
+        }
+
+        setUserModal(false);
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const handleDeleteUser = () => {
+        if (!editingUser) return;
+        if (editingUser.name.toLowerCase() === 'carol') {
+          setToast('A administradora Carol não pode ser excluída.');
+          return;
+        }
+        if (!confirm(`Deseja realmente excluir a profissional ${editingUser.name}?`)) return;
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.excluirColaborador(editingUser.name);
+        }
+
+        setUsers(users.filter(u => u.name !== editingUser.name));
+        setUserModal(false);
+        setToast('Profissional removida!');
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const handleOpenServiceModal = (itemToEdit = null) => {
+        if (itemToEdit) {
+          setEditingService(itemToEdit);
+          setServName(itemToEdit.name);
+          setServTime(itemToEdit.time);
+          setServPrice(String(itemToEdit.price));
+        } else {
+          setEditingService(null);
+          setServName('');
+          setServTime('60 min');
+          setServPrice('');
+        }
+        setServiceModal(true);
+      };
+
+      const handleSaveService = () => {
+        if (!servName.trim() || !servPrice) {
+          setToast('Preencha o nome e o preço do serviço.');
+          return;
+        }
+        const novoServico = {
+          name: servName.trim(),
+          time: servTime.trim() || '45 min',
+          price: Number(servPrice) || 0
+        };
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.salvarServico(novoServico, editingService ? editingService.name : null);
+        }
+
+        if (editingService) {
+          setServices(services.map(s => s.name === editingService.name ? novoServico : s));
+          setToast('Serviço atualizado com sucesso!');
+        } else {
+          setServices([...services, novoServico]);
+          setToast('Novo serviço cadastrado!');
+        }
+
+        setServiceModal(false);
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const handleDeleteService = () => {
+        if (!editingService) return;
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.excluirServico(editingService.name);
+        }
+        setServices(services.filter(s => s.name !== editingService.name));
+        setServiceModal(false);
+        setToast('Serviço removido.');
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const addAppointment = () => {
+        const todayStr = getTodayISO();
+
+        if (appDate < todayStr) {
+          setToast('⚠️ Não é permitido agendar para datas que já se passaram!');
+          window.setTimeout(() => setToast(''), 4000);
+          return;
+        }
+
+        const cleanStart = formatTime(time);
+        const selectedServiceObj = services.find(s => s.name === service);
+        const precoServico = selectedServiceObj ? selectedServiceObj.price : 0;
+        const duracaoMinutos = selectedServiceObj ? parseMinutes(selectedServiceObj.time) : 60;
+        const cleanEnd = addMinutesToTime(cleanStart, duracaoMinutos);
+
+        const newStart = timeToMinutes(cleanStart);
+        const newEnd = timeToMinutes(cleanEnd);
+
+        const conflito = appointments.find(item => {
+          if (item.date !== appDate || item.pro !== professional) return false;
+          const itemStart = timeToMinutes(item.time);
+          const itemEnd = timeToMinutes(item.end);
+          return newStart < itemEnd && newEnd > itemStart;
+        });
+
+        if (conflito) {
+          setToast(`⚠️ ${professional} já possui cliente (${conflito.client}) das ${formatTime(conflito.time)} às ${formatTime(conflito.end)}!`);
+          window.setTimeout(() => setToast(''), 5000);
+          return;
+        }
+
+        const novoItem = {
+          date: appDate,
+          time: cleanStart,
+          end: cleanEnd,
+          client: client.trim() || 'Cliente sem nome',
+          service: service || (services[0]?.name || 'Atendimento'),
+          pro: professional,
+          price: precoServico,
+          status: 'agendado'
+        };
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run
+            .withSuccessHandler((res) => {
+              if (res && res.sucesso) {
+                setAppointments(prev => [...prev, novoItem]);
+                setAgendaProfessional(professional);
+                setModal(false);
+                setClient('');
+                setToast('Horário agendado com sucesso!');
+              } else {
+                setToast('⚠️ ' + (res?.erro || 'Não foi possível salvar na planilha.'));
+              }
+            })
+            .withFailureHandler((err) => {
+              setToast('⚠️ Erro de permissão: ' + (err.message || 'Verifique a implantação.'));
+            })
+            .salvarAgendamento(novoItem);
+        } else {
+          setAppointments(prev => [...prev, novoItem]);
+          setModal(false);
+          setToast('Horário agendado com sucesso!');
+        }
+
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const toggleAppointmentStatus = (index) => {
+        const item = appointments[index];
+        if (!item) return;
+
+        const novoStatus = item.status === 'confirmado' ? 'agendado' : 'confirmado';
+
+        if (typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.atualizarStatusAgendamento(item.date, item.time, item.client, item.pro, novoStatus);
+        }
+
+        const updated = [...appointments];
+        updated[index] = { ...item, status: novoStatus };
+        setAppointments(updated);
+        setToast(novoStatus === 'confirmado' ? 'Atendimento confirmado!' : 'Status revertido para agendado.');
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const cancelAppointment = (indexToCancel) => {
+        const item = appointments[indexToCancel];
+        if (item && typeof google !== 'undefined' && google.script && google.script.run) {
+          google.script.run.cancelarAgendamento(item.date, item.time, item.client, item.pro);
+        }
+        setAppointments(appointments.filter((_, i) => i !== indexToCancel));
+        setDetail(null);
+        setToast('Agendamento cancelado.');
+        window.setTimeout(() => setToast(''), 3000);
+      };
+
+      const changeWeek = (offsetDays) => {
+        const [y, m, d] = appDate.split('-').map(Number);
+        const curr = new Date(y, m - 1, d);
+        curr.setDate(curr.getDate() + offsetDays);
+        setAppDate(`${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`);
+      };
+
+      const weekDays = useMemo(() => getWeekDays(appDate), [appDate]);
+
+      const professionalAppointments = appointments
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.pro === agendaProfessional && item.date === appDate);
+
+      const menuItems = [
+        ['Início', 'home'], 
+        ['Agenda', 'calendar'], 
+        ['Clientes', 'users'], 
+        ['Serviços', 'sparkles'], 
+        ['Financeiro', 'wallet']
+      ];
+
+      // APLICAÇÃO LOGADA (APP SHELL COM ROLAGEM ISOLADA NO CONTEÚDO)
+      return (
+        <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
+          {/* BARRA LATERAL DESKTOP */}
+          <aside className="hidden lg:flex w-64 flex-col border-r border-stone-200 bg-[#251d20] px-4 py-6 text-white shrink-0 z-30">
+            <div className="flex items-center gap-3 px-3">
+              <BrandMark small/>
+              <div>
+                <p className="font-serif text-xl font-bold">Espaço 101</p>
+                <p className="text-[11px] text-white/45">Studio de beleza</p>
+              </div>
+            </div>
+            
+            <nav className="mt-10 space-y-1">
+              {menuItems.map(([label, icon]) => (
+                <button
+                  onClick={() => setTab(label)}
+                  key={label}
+                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium transition ${tab === label ? 'bg-white/12 text-white font-bold' : 'text-white/55 hover:bg-white/5'}`}
+                >
+                  <Icon name={icon} size={19} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+
+            {isAdmin && (
+              <div className="mt-auto space-y-2">
+                <button onClick={() => handleOpenServiceModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
+                  <Icon name="plus" size={15}/> + Novo Serviço
+                </button>
+                <button onClick={() => handleOpenUserModal(null)} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
+                  <Icon name="userPlus" size={15}/> + Nova Profissional
+                </button>
+              </div>
+            )}
+          </aside>
+
+          {/* COLUNA PRINCIPAL COM ROLAGEM INTERNA PROTEGIDA */}
+          <div className="flex flex-1 flex-col h-full min-w-0 overflow-hidden relative">
+            {/* CABEÇALHO FIXO SUPERIOR */}
+            <header className="shrink-0 z-20 flex items-center justify-between border-b border-stone-200/70 bg-[#f8f5f2]/95 px-4 py-3.5 backdrop-blur md:px-8">
+              <div className="flex items-center gap-2 lg:hidden">
+                <BrandMark small/>
+                <div><p className="font-serif text-lg font-bold">Espaço 101</p></div>
+              </div>
+              <div className="hidden lg:block">
+                <p className="text-xs font-medium text-stone-400 uppercase tracking-widest">{activeUserObj?.role || 'Profissional'}</p>
+                <p className="font-serif text-lg font-bold">Olá, {currentUser}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                {isAdmin && (
+                  <button onClick={() => handleOpenServiceModal(null)} className="hidden sm:flex items-center gap-1.5 rounded-full bg-[#f3ded9] px-3.5 py-1.5 text-xs font-bold text-[#6f424a] hover:bg-[#ebd0c9]">
+                    <Icon name="plus" size={14}/> Serviço
+                  </button>
+                )}
+                <div className="flex items-center gap-2 rounded-full bg-white p-1 pr-2 shadow-sm border border-stone-200/60">
+                  <span className="grid w-8 h-8 place-items-center rounded-full bg-[#6f424a] text-xs font-bold text-white">{(currentUser || 'C')[0]}</span>
+                  <span className="text-xs font-bold">{currentUser}</span>
+                  <button onClick={handleLogout} className="rounded-full px-2 py-1 text-[10px] font-bold text-stone-400 hover:text-red-600 transition">
+                    Sair
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* ÁREA DE CONTEÚDO QUE ROLA LIVREMENTE SEM MOVER O MENU */}
+            <main className="flex-1 overflow-y-auto overscroll-y-contain px-0 pb-28 lg:pb-12" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="w-full max-w-5xl mx-auto">
+                {tab === 'Agenda' ? (
+                  <div className="w-full px-4 py-6 md:px-8">
+                    <section className="mb-6 flex items-end justify-between">
+                      <div>
+                        <p className="text-sm text-stone-500">Bom dia, {currentUser}</p>
+                        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight md:text-4xl">Sua agenda</h1>
+                      </div>
+                    </section>
+
+                    {/* CARROSSEL DE DIAS + CALENDÁRIO COM min-w-0 QUE ELIMINA A OSCILAÇÃO */}
+                    <section className="mb-6 flex items-center gap-2 w-full overflow-hidden">
+                      <button 
+                        onClick={() => changeWeek(-7)} 
+                        title="Semana anterior"
+                        className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm"
+                      >
+                        <Icon name="chevronLeft" size={18} />
+                      </button>
+
+                      <div className="flex-1 min-w-0 overflow-x-auto pb-1 [scrollbar-width:none]">
+                        <div className="flex min-w-max gap-2">
+                          {weekDays.map((day) => (
+                            <button
+                              key={day.fullDate}
+                              onClick={() => setAppDate(day.fullDate)}
+                              className={`flex w-14 flex-col items-center rounded-2xl py-3 transition md:w-16 ${day.active ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/10' : 'bg-white text-stone-500 hover:bg-rose-50'}`}
+                            >
+                              <span className={`text-[10px] font-bold ${day.active ? 'text-white/60' : 'text-stone-400'}`}>{day.week}</span>
+                              <span className="mt-1 text-lg font-bold">{day.date}</span>
+                              {day.active && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#f2c4bb]"></span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => changeWeek(7)} 
+                        title="Próxima semana"
+                        className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm"
+                      >
+                        <Icon name="chevron" size={18} />
+                      </button>
+
+                      {/* BOTÃO DO CALENDÁRIO FIXO AO LADO DOS DIAS */}
+                      <button
+                        type="button"
+                        onClick={() => setDateModal(true)}
+                        title="Abrir calendário / Selecionar data"
+                        className="flex items-center gap-2 h-14 px-3 sm:px-4 rounded-2xl bg-white border border-stone-200/80 text-stone-700 hover:bg-stone-50 hover:border-[#9d6269] transition shrink-0 shadow-sm"
+                      >
+                        <Icon name="calendar" size={18} />
+                        <span className="text-xs font-bold text-stone-700">
+                          {appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}
+                        </span>
+                      </button>
+                    </section>
+
+                    {/* Seleção de Profissional */}
+                    <section className="mb-5 w-full">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Agendas da Equipe</p>
+                        <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#7c4851]">
+                          Visão compartilhada
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                        {users.map((person) => (
+                          <button
+                            onClick={() => { setAgendaProfessional(person.name); setProfessional(person.name); }}
+                            key={person.name}
+                            className={`flex min-w-0 items-center gap-2.5 rounded-2xl border p-2.5 text-left transition ${agendaProfessional === person.name ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' : 'border-stone-200 bg-white/70 hover:bg-white'}`}
+                          >
+                            <span className="grid w-8 h-8 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                              {(person.name || 'P')[0]}
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-bold">{person.name}</span>
+                              <span className="block truncate text-[10px] text-stone-400">{person.role}</span>
+                            </div>
+                            {agendaProfessional === person.name && <span className="w-2 h-2 rounded-full bg-[#9d6269] shrink-0"></span>}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    {/* Lista de Atendimentos */}
+                    <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
+                      <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between">
+                        <div>
+                          <h2 className="font-serif text-lg font-bold">Agenda de {agendaProfessional}</h2>
+                          <p className="text-xs text-stone-400">{professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().join('/')}</p>
+                        </div>
+                      </div>
+
+                      <div className="divide-y divide-stone-100">
+                        {professionalAppointments.map(({ item, index }) => (
+                          <button
+                            onClick={() => setDetail(index)}
+                            key={`${item.time}-${item.client}`}
+                            className="group flex w-full gap-3 px-4 py-4 text-left transition hover:bg-[#fcf8f6] md:px-5"
+                          >
+                            <div className="w-14 shrink-0 pt-1">
+                              <p className="text-sm font-bold text-stone-800">{formatTime(item.time)}</p>
+                              <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
+                            </div>
+                            <div className={`w-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div className="grid w-10 h-10 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                                {String(item.client).slice(0, 2).toUpperCase()}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-stone-800">{item.client}</p>
+                                <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
+                              </div>
+
+                              <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full flex items-center gap-1 shrink-0 ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                              </span>
+                              <Icon name="chevron" size={16} />
+                            </div>
+                          </button>
+                        ))}
+
+                        {professionalAppointments.length === 0 && (
+                          <div className="px-5 py-16 text-center">
+                            <div className="mx-auto grid w-12 h-12 place-items-center rounded-full bg-stone-100 text-stone-400">
+                              <Icon name="calendar" size={22}/>
+                            </div>
+                            <p className="mt-3 text-sm font-bold text-stone-700">Nenhum horário marcado</p>
+                            <p className="mt-1 text-xs text-stone-400">{agendaProfessional} está com a agenda livre nesta data.</p>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                ) : (
+                  <OtherPage 
+                    tab={tab} 
+                    isAdmin={isAdmin} 
+                    currentUser={currentUser}
+                    users={users} 
+                    services={services}
+                    appointments={appointments}
+                    onOpenUserModal={handleOpenUserModal} 
+                    onEditUser={handleOpenUserModal}
+                    onOpenServiceModal={handleOpenServiceModal}
+                    onEditService={handleOpenServiceModal}
+                    onSelectAppointment={(idx) => setDetail(idx)}
+                  />
+                )}
+              </div>
+            </main>
+
+            {/* BOTÃO FLUTUANTE "+ NOVO HORÁRIO" (DESKTOP E MOBILE) */}
+            {tab === 'Agenda' && (
+              <button
+                onClick={() => setModal(true)}
+                aria-label="Novo horário"
+                className="fixed bottom-20 right-4 lg:bottom-10 lg:right-10 z-30 flex items-center gap-2.5 rounded-full bg-[#6f424a] px-5 py-3.5 text-sm font-bold text-white shadow-2xl shadow-rose-950/40 border border-white/20 active:scale-95 hover:bg-[#5b363d] transition-all"
+                style={{ willChange: 'transform', transform: 'translateZ(0)' }}
+              >
+                <Icon name="plus" size={20} />
+                <span>Novo horário</span>
+              </button>
+            )}
+
+            {/* BARRA INFERIOR MOBILE TOTALMENTE FIXA (SHRINK-0) - NUNCA SE MOVE OU SAMBA */}
+            <nav 
+              className="shrink-0 lg:hidden z-30 flex justify-around border-t border-stone-200 bg-white/98 backdrop-blur px-2 pb-[max(0.6rem,env(safe-area-inset-bottom))] pt-2 w-full shadow-lg"
+              style={{ willChange: 'transform', transform: 'translateZ(0)' }}
+            >
+              {menuItems.map(([label, icon]) => (
+                <button 
+                  onClick={() => setTab(label)} 
+                  key={label} 
+                  className={`flex min-w-14 flex-col items-center gap-1 text-[10px] font-medium transition ${tab === label ? 'text-[#6f424a] font-bold' : 'text-stone-400'}`}
+                >
+                  <Icon name={icon} size={20} />
+                  {label}
+                </button>
+              ))}
+            </nav>
+          </div>
+
+          {/* MODAL DO CALENDÁRIO COM ALINHAMENTO E CAIXA DE DATA 100% CENTRALIZADOS */}
+          {dateModal && (
+            <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2 text-[#6f424a]">
+                    <Icon name="calendar" size={20} />
+                    <h3 className="font-serif text-lg font-bold text-stone-900">Escolher Data</h3>
+                  </div>
+                  <button onClick={() => setDateModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200">
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-4 w-full">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAppDate(getTodayISO());
+                      setDateModal(false);
+                      setToast('Agenda posicionada em Hoje!');
+                      setTimeout(() => setToast(''), 2500);
+                    }}
+                    className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#faf0ed] hover:bg-[#f3ded9] text-[#6f424a] py-3 text-sm font-bold border border-rose-200/60 transition"
+                  >
+                    <Icon name="sparkles" size={16} />
+                    <span>Selecionar Hoje ({new Date().toLocaleDateString('pt-BR')})</span>
+                  </button>
+
+                  <div className="w-full">
+                    <label className="block text-xs font-bold text-stone-600 mb-1.5 text-center">
+                      Ou escolha uma data específica:
+                    </label>
+                    <div className="w-full flex justify-center">
+                      <input
+                        type="date"
+                        value={appDate}
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            setAppDate(e.target.value);
+                          }
+                        }}
+                        className="w-full block rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold text-stone-800 text-center outline-none focus:border-[#9d6269] focus:bg-white transition"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDateModal(false)}
+                    className="w-full rounded-xl bg-[#6f424a] hover:bg-[#5b363d] py-3 text-sm font-bold text-white transition shadow-sm"
+                  >
+                    Confirmar Data
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Novo Agendamento */}
+          {modal && (
+            <div onMouseDown={() => setModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={(e) => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-amber-600 bg-amber-50 px-2 py-0.5 rounded-md">Status inicial: Agendado</span>
+                    <h2 className="mt-1 font-serif text-2xl font-bold">Novo agendamento</h2>
+                  </div>
+                  <button onClick={() => setModal(false)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100">
+                    <Icon name="x" size={17} />
+                  </button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Cliente</span>
+                    <input value={client} onChange={(e) => setClient(e.target.value)} placeholder="Nome da cliente" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Serviço</span>
+                    <select value={service} onChange={(e) => setService(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
+                      {services.map(s => <option key={s.name} value={s.name}>{s.name} ({formatCurrency(s.price)})</option>)}
+                    </select>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Data</span>
+                      <input 
+                        type="date" 
+                        min={getTodayISO()} 
+                        value={appDate < getTodayISO() ? getTodayISO() : appDate} 
+                        onChange={e => setAppDate(e.target.value)} 
+                        className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" 
+                      />
+                    </label>
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Horário de Início</span>
+                      <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Profissional que atenderá</span>
+                    <select value={professional} onChange={(e) => setProfessional(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
+                      {users.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role})</option>)}
+                    </select>
+                  </label>
+                </div>
+                <button onClick={addAppointment} className="mt-6 w-full rounded-xl bg-[#6f424a] py-3.5 text-sm font-bold text-white hover:bg-[#5b363d] active:scale-95 transition">
+                  Confirmar Agendamento
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Profissional */}
+          {userModal && (
+            <div onMouseDown={() => setUserModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={(e) => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#9d6269]">Administração</p>
+                    <h2 className="mt-1 font-serif text-2xl font-bold">{editingUser ? 'Editar Profissional' : 'Nova Profissional'}</h2>
+                  </div>
+                  <button onClick={() => setUserModal(false)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100">
+                    <Icon name="x" size={17} />
+                  </button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Nome</span>
+                    <input value={colabName} onChange={(e) => setColabName(e.target.value)} placeholder="Ex: Mariana Silva" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Cargo / Especialidade</span>
+                    <input value={colabRole} onChange={(e) => setColabRole(e.target.value)} placeholder="Ex: Manicure, Esteticista..." className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                  </label>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Senha de Acesso</span>
+                    <input value={colabPass} onChange={(e) => setColabPass(e.target.value)} type="password" placeholder="Defina a senha" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                  </label>
+                </div>
+
+                <div className="mt-6 flex gap-2">
+                  {editingUser && editingUser.name.toLowerCase() !== 'carol' && (
+                    <button onClick={handleDeleteUser} className="flex-1 rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center justify-center gap-1.5">
+                      <Icon name="trash" size={16}/> Excluir
+                    </button>
+                  )}
+                  <button onClick={handleSaveUser} className="flex-[2] rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] active:scale-95 transition">
+                    {editingUser ? 'Salvar Alterações' : 'Cadastrar Profissional'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal de Serviço */}
+          {serviceModal && (
+            <div onMouseDown={() => setServiceModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={(e) => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-xs font-bold uppercase tracking-widest text-[#9d6269]">Catálogo</p>
+                    <h2 className="mt-1 font-serif text-2xl font-bold">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h2>
+                  </div>
+                  <button onClick={() => setServiceModal(false)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100">
+                    <Icon name="x" size={17} />
+                  </button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Nome do Serviço</span>
+                    <input value={servName} onChange={e => setServName(e.target.value)} placeholder="Ex: Hidratação profunda" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Duração estimada</span>
+                      <input value={servTime} onChange={e => setServTime(e.target.value)} placeholder="Ex: 45 min" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                    </label>
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Preço (R$)</span>
+                      <input type="number" step="0.01" value={servPrice} onChange={e => setServPrice(e.target.value)} placeholder="0.00" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="mt-6 flex gap-2">
+                  {editingService && (
+                    <button onClick={handleDeleteService} className="flex-1 rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50 flex items-center justify-center gap-1.5">
+                      <Icon name="trash" size={16}/> Excluir
+                    </button>
+                  )}
+                  <button onClick={handleSaveService} className="flex-[2] rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] active:scale-95 transition">
+                    {editingService ? 'Salvar Alterações' : 'Cadastrar Serviço'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Modal Detalhes */}
+          {detail !== null && appointments[detail] && (
+            <div onMouseDown={() => setDetail(null)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={(e) => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      Status: {appointments[detail].status}
+                    </span>
+                    <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
+                  </div>
+                  <button onClick={() => setDetail(null)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100">
+                    <Icon name="x" size={17}/>
+                  </button>
+                </div>
+
+                <div className="my-5 rounded-2xl bg-stone-50 p-4">
+                  <p className="text-sm font-bold">{appointments[detail].service} · {formatCurrency(appointments[detail].price)}</p>
+                  <p className="mt-1.5 text-sm text-stone-500">Data: {appointments[detail].date.split('-').reverse().join('/')} às {formatTime(appointments[detail].time)}–{formatTime(appointments[detail].end)}</p>
+                  <p className="text-xs text-stone-400 mt-1">Profissional: {appointments[detail].pro}</p>
+                </div>
+
+                <div className="space-y-2">
+                  <button 
+                    onClick={() => toggleAppointmentStatus(detail)} 
+                    className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition active:scale-95 ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
+                  >
+                    {appointments[detail].status === 'confirmado' ? (
+                      <>↩ Voltar para "Agendado"</>
+                    ) : (
+                      <><Icon name="check" size={17}/> Confirmar Atendimento</>
+                    )}
+                  </button>
+
+                  <button 
+                    onClick={() => cancelAppointment(detail)} 
+                    className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50"
+                  >
+                    Cancelar Horário
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {toast && (
+            <div className="fixed bottom-24 left-1/2 z-[60] -translate-x-1/2 whitespace-nowrap rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
+              {toast}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
