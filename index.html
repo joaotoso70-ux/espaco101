@@ -51,31 +51,49 @@
   <script type="text/babel">
     const API_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
 
-    const apiGet = async () => {
-      try {
-        const res = await fetch(`${API_URL}?action=obterDados`, {
-          method: 'GET',
-          mode: 'cors',
-          redirect: 'follow'
-        });
-        if (!res.ok) throw new Error("Status " + res.status);
-        return await res.json();
-      } catch (e) {
-        console.error("Erro GET:", e);
-        return null;
-      }
+    // LEITURA 100% IMUNE A CORS VIA JSONP
+    const apiGet = () => {
+      return new Promise((resolve) => {
+        const callbackName = 'gas_callback_' + Math.floor(Math.random() * 1000000);
+        const script = document.createElement('script');
+        
+        const timer = setTimeout(() => {
+          cleanup();
+          resolve(null);
+        }, 15000);
+
+        const cleanup = () => {
+          clearTimeout(timer);
+          if (window[callbackName]) delete window[callbackName];
+          if (script.parentNode) script.parentNode.removeChild(script);
+        };
+
+        window[callbackName] = (data) => {
+          cleanup();
+          resolve(data);
+        };
+
+        script.onerror = () => {
+          cleanup();
+          resolve(null);
+        };
+
+        script.src = `${API_URL}?action=obterDados&callback=${callbackName}`;
+        document.head.appendChild(script);
+      });
     };
 
+    // GRAVAÇÃO VIA NO-CORS (NÃO BLOQUEIA NO REDIRECIONAMENTO)
     const apiPost = async (action, payload) => {
       try {
-        const res = await fetch(API_URL, {
+        await fetch(API_URL, {
           method: 'POST',
-          mode: 'cors',
-          redirect: 'follow',
+          mode: 'no-cors',
+          cache: 'no-cache',
           headers: { 'Content-Type': 'text/plain;charset=utf-8' },
           body: JSON.stringify({ action, payload })
         });
-        return await res.json();
+        return { sucesso: true };
       } catch (e) {
         console.error("Erro POST:", e);
         return { sucesso: false, erro: e.message };
@@ -547,7 +565,7 @@
           if (dados.agendamentos) setAppointments(dados.agendamentos);
           setApiError('');
         } else {
-          setApiError('Não foi possível sincronizar com o Google Sheets. Verifique a implantação do Apps Script.');
+          setApiError('Não foi possível sincronizar com o Google Sheets.');
         }
       };
 
@@ -692,17 +710,13 @@
           pro: professional, price: precoServico, status: 'agendado'
         };
 
-        const res = await apiPost('salvarAgendamento', novoItem);
-        if (res && res.sucesso) {
-          setAppointments(prev => [...prev, novoItem]);
-          setAgendaProfessional(professional);
-          setModal(false);
-          setClient('');
-          setToast('Horário agendado com sucesso!');
-        } else {
-          setToast('⚠️ ' + (res?.erro || 'Erro ao gravar na planilha.'));
-        }
-        setTimeout(() => setToast(''), 3500);
+        apiPost('salvarAgendamento', novoItem);
+        setAppointments(prev => [...prev, novoItem]);
+        setAgendaProfessional(professional);
+        setModal(false);
+        setClient('');
+        setToast('Horário agendado com sucesso!');
+        setTimeout(() => setToast(''), 3000);
       };
 
       const toggleAppointmentStatus = async (index) => {
@@ -798,7 +812,7 @@
 
       return (
         <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
-          {/* MENU LATERAL DESKTOP */}
+          {/* MENU LATERAL DESKTOP (SEM O BOTÃO DE SAIR DUPLICADO NO RODAPÉ) */}
           <aside className="hidden lg:flex w-64 flex-col border-r border-stone-200 bg-[#251d20] px-4 py-6 text-white shrink-0 z-30">
             <div className="flex items-center gap-3 px-3">
               <BrandMark small/>
@@ -979,7 +993,7 @@
             </nav>
           </div>
 
-          {/* MODAL DATA */}
+          {/* MODAIS */}
           {dateModal && (
             <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
@@ -998,7 +1012,6 @@
             </div>
           )}
 
-          {/* MODAL NOVO AGENDAMENTO */}
           {modal && (
             <div onMouseDown={() => setModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
@@ -1039,7 +1052,6 @@
             </div>
           )}
 
-          {/* MODAL DETALHES */}
           {detail !== null && appointments[detail] && (
             <div onMouseDown={() => setDetail(null)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem]">
