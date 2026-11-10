@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Espaço 101</title>
   
-  <!-- Ícone local no próprio GitHub (sem bloqueios externos) -->
   <link rel="apple-touch-icon" sizes="180x180" href="logo.png">
   <link rel="icon" type="image/png" sizes="192x192" href="logo.png">
   <link rel="shortcut icon" href="logo.png">
@@ -26,12 +25,16 @@
       height: 100dvh;
       overflow: hidden;
       background-color: #f8f5f2;
+      position: relative;
     }
+    /* Empurra o topo do iframe para fora da tela, sumindo com o aviso do Google */
     iframe {
       border: 0;
+      position: absolute;
+      top: -38px;
+      left: 0;
       width: 100%;
-      height: 100%;
-      height: 100dvh;
+      height: calc(100% + 38px);
       display: block;
     }
   </style>
