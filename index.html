@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Espaço 101</title>
   
-  <!-- URL absoluta para impedir falhas de leitura do Safari -->
   <link rel="apple-touch-icon" sizes="180x180" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
   <link rel="icon" type="image/png" sizes="192x192" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
   <link rel="shortcut icon" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
@@ -15,7 +14,6 @@
   <meta name="apple-mobile-web-app-title" content="Espaço 101">
 
   <style>
-    /* Trava o fundo no iOS impedindo que a página seja puxada para baixo */
     html, body {
       margin: 0;
       padding: 0;
@@ -26,7 +24,6 @@
       position: fixed;
       inset: 0;
     }
-    /* O deslocamento de -50px elimina por completo a barra de aviso do Google */
     iframe {
       border: 0;
       position: absolute;
@@ -39,9 +36,33 @@
   </style>
 </head>
 <body>
-  <iframe 
-    src="https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec" 
-    allow="fullscreen">
-  </iframe>
+  <iframe id="agendaFrame" allow="fullscreen"></iframe>
+
+  <script>
+    const GOOGLE_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
+    
+    // Recupera o login salvo no iPhone pelo GitHub
+    const savedUser = localStorage.getItem('espaco101_user') || '';
+    const savedPass = localStorage.getItem('espaco101_pass') || '';
+    
+    let destUrl = GOOGLE_URL;
+    if (savedUser && savedPass) {
+      destUrl += "?u=" + encodeURIComponent(savedUser) + "&p=" + encodeURIComponent(savedPass);
+    }
+    
+    document.getElementById('agendaFrame').src = destUrl;
+
+    // Escuta comandos de Login e Logout vindos da agenda
+    window.addEventListener('message', function(event) {
+      if (event.data && event.data.type === 'AUTO_LOGIN') {
+        localStorage.setItem('espaco101_user', event.data.user);
+        localStorage.setItem('espaco101_pass', event.data.pass);
+      }
+      if (event.data && event.data.type === 'LOGOUT') {
+        localStorage.removeItem('espaco101_user');
+        localStorage.removeItem('espaco101_pass');
+      }
+    });
+  </script>
 </body>
 </html>
