@@ -14,23 +14,19 @@
   <meta name="apple-mobile-web-app-title" content="Espaço 101">
 
   <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      margin: 0;
-      padding: 0;
       width: 100%;
       height: 100%;
+      height: 100dvh;
       overflow: hidden;
       background-color: #f8f5f2;
-      position: fixed;
-      inset: 0;
     }
     iframe {
       border: 0;
-      position: absolute;
-      top: -50px;
-      left: 0;
       width: 100%;
-      height: calc(100% + 50px);
+      height: 100%;
+      height: 100dvh;
       display: block;
     }
   </style>
@@ -41,7 +37,7 @@
   <script>
     const GOOGLE_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
     
-    // Recupera o login salvo no iPhone pelo GitHub
+    // Lê as credenciais salvas no armazenamento nativo do iPhone
     const savedUser = localStorage.getItem('espaco101_user') || '';
     const savedPass = localStorage.getItem('espaco101_pass') || '';
     
@@ -52,17 +48,23 @@
     
     document.getElementById('agendaFrame').src = destUrl;
 
-    // Escuta comandos de Login e Logout vindos da agenda
+    // Escuta a mensagem enviada pelo aplicativo
     window.addEventListener('message', function(event) {
-      if (event.data && event.data.type === 'AUTO_LOGIN') {
-        localStorage.setItem('espaco101_user', event.data.user);
-        localStorage.setItem('espaco101_pass', event.data.pass);
-      }
-      if (event.data && event.data.type === 'LOGOUT') {
-        localStorage.removeItem('espaco101_user');
-        localStorage.removeItem('espaco101_pass');
-      }
-    });
+      try {
+        let data = event.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data); } catch(e) {}
+        }
+        if (data && data.type === 'AUTO_LOGIN') {
+          localStorage.setItem('espaco101_user', String(data.user));
+          localStorage.setItem('espaco101_pass', String(data.pass));
+        }
+        if (data && data.type === 'LOGOUT') {
+          localStorage.removeItem('espaco101_user');
+          localStorage.removeItem('espaco101_pass');
+        }
+      } catch(err) {}
+    }, false);
   </script>
 </body>
 </html>
