@@ -32,11 +32,10 @@ self.addEventListener('push', (event) => {
     }
 
     const ua = (self.navigator && self.navigator.userAgent) ? self.navigator.userAgent : '';
-    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+    const isAndroid = /Android/i.test(ua);
 
-    // No iPhone fica vazio (usa o "from Espaço 101" como título).
-    // No Android/PC usa "Espaço 101" como título em negrito.
-    const tituloFinal = isIOS ? '' : (data.title || 'Espaço 101');
+    // Só coloca título no Android. No iPhone vai sempre vazio.
+    const tituloFinal = isAndroid ? (data.title || 'Espaço 101') : '';
 
     return self.registration.showNotification(tituloFinal, {
       body: data.body,
