@@ -1522,9 +1522,26 @@
 
       const addAppointment = async () => {
         if (isSaving) return;
-        if (appDate < getTodayISO()) return setToast('⚠️ Não é permitido agendar datas passadas.');
-        
+
+        const hojeISO = getTodayISO();
         const cleanStart = formatTime(time);
+
+        if (appDate < hojeISO) {
+          setToast('⚠️ Não é permitido agendar para datas que já passaram.');
+          setTimeout(() => setToast(''), 3500);
+          return;
+        }
+
+        if (appDate === hojeISO) {
+          const agora = new Date();
+          const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+          if (timeToMinutes(cleanStart) < agoraMin) {
+            setToast('⚠️ Não é permitido agendar para um horário que já passou.');
+            setTimeout(() => setToast(''), 3500);
+            return;
+          }
+        }
+
         const actualService = service || (services[0] ? services[0].name : 'Atendimento');
         const selectedServiceObj = services.find(s => s.name === actualService);
         const precoServico = selectedServiceObj ? Number(selectedServiceObj.price) : 0;
@@ -1997,7 +2014,11 @@
             {(tab === 'Início' || tab === 'Agenda' || tab === 'Clientes') && (
               <button 
                 type="button" 
-                onClick={() => { setShowClientSuggestions(false); setModal(true); }} 
+                onClick={() => {
+                  setShowClientSuggestions(false);
+                  if (appDate < getTodayISO()) setAppDate(getTodayISO());
+                  setModal(true);
+                }} 
                 aria-label="Novo horário" 
                 className="fixed bottom-20 right-8 lg:bottom-12 lg:right-14 z-30 grid w-14 h-14 place-items-center rounded-full bg-[#6f424a] text-white shadow-2xl border border-white/20 active:scale-95 hover:bg-[#5b363d] transition-all">
                 <Icon name="plus" size={24} />
