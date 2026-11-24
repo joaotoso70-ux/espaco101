@@ -26,11 +26,22 @@
 <body>
   <button id="btnNotify" onclick="ativarNotificacoes()">🔔 Ativar Notificações neste Celular</button>
   
-  <iframe id="appFrame" src="https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec"></iframe>
+  <iframe id="appFrame"></iframe>
 
   <script>
+    const BASE_GAS_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
     const VAPID_PUBLIC_KEY = "BMGDyo7TIpfyKf5z_9Dy5pcyARHAv25n-fZcANGUtL8s6nHDlYRtqFiQniMZsahQV3Ez2s6gMmcZVKl1Lb7riXU";
-    const GAS_URL = document.getElementById("appFrame").src;
+
+    // Carrega o iframe já injetando o usuário/senha salvos para não pedir login ao fechar o app
+    const frame = document.getElementById("appFrame");
+    const savedU = localStorage.getItem('espaco101_auth_u') || '';
+    const savedP = localStorage.getItem('espaco101_auth_p') || '';
+
+    if (savedU && savedP) {
+      frame.src = `${BASE_GAS_URL}?u=${encodeURIComponent(savedU)}&p=${encodeURIComponent(savedP)}`;
+    } else {
+      frame.src = BASE_GAS_URL;
+    }
 
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -73,8 +84,8 @@
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           });
         }
-        const usuarioAtual = localStorage.getItem('espaco101_user_session') || 'Equipe';
-        await fetch(GAS_URL, {
+        const usuarioAtual = localStorage.getItem('espaco101_auth_u') || 'Equipe';
+        await fetch(BASE_GAS_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
@@ -89,10 +100,16 @@
       }
     }
 
+    // Escuta o login e o logout feitos dentro do Apps Script para salvar/limpar no dispositivo
     window.addEventListener('message', (event) => {
-      if (event.data && event.data.type === 'AUTO_LOGIN') {
-        localStorage.setItem('espaco101_user_session', event.data.user);
+      if (!event.data) return;
+      if (event.data.type === 'AUTO_LOGIN') {
+        localStorage.setItem('espaco101_auth_u', event.data.user || '');
+        localStorage.setItem('espaco101_auth_p', event.data.pass || '');
         if (Notification.permission === 'granted') registrarAssinatura();
+      } else if (event.data.type === 'LOGOUT') {
+        localStorage.removeItem('espaco101_auth_u');
+        localStorage.removeItem('espaco101_auth_p');
       }
     });
 
