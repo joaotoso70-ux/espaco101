@@ -11,8 +11,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {
-      title: '✨ Novo Agendamento',
-      body: 'Um novo horário foi marcado na agenda.'
+      title: '',
+      body: '✨ Novo Agendamento\nUm novo horário foi marcado na agenda.'
     };
 
     try {
@@ -22,7 +22,7 @@ self.addEventListener('push', (event) => {
       });
       if (resp.ok) {
         const json = await resp.json();
-        if (json && json.title) data = json;
+        if (json && typeof json.body === 'string') data = json;
       }
     } catch (e) {}
 
@@ -31,7 +31,7 @@ self.addEventListener('push', (event) => {
       client.postMessage({ type: 'PUSH_RECEIVED', data });
     }
 
-    return self.registration.showNotification(data.title, {
+    return self.registration.showNotification(data.title || '', {
       body: data.body,
       icon: './logo.png',
       badge: './logo.png',
