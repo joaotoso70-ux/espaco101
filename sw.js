@@ -34,8 +34,8 @@ self.addEventListener('push', (event) => {
     const ua = (self.navigator && self.navigator.userAgent) ? self.navigator.userAgent : '';
     const isAndroid = /Android/i.test(ua);
 
-    // Só coloca título no Android. No iPhone vai sempre vazio.
-    const tituloFinal = isAndroid ? (data.title || 'Espaço 101') : '';
+    // No Android mostra "Espaço 101" no título. No iPhone usa caractere invisível para não puxar a 1ª linha.
+    const tituloFinal = isAndroid ? (data.title || 'Espaço 101') : '\u200B';
 
     return self.registration.showNotification(tituloFinal, {
       body: data.body,
