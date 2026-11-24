@@ -1798,4 +1798,528 @@
 
                 <div className="flex items-center gap-1.5 rounded-full bg-white p-1 pr-1.5 shadow-sm border border-stone-200/60">
                   <span className="text-xs font-bold pl-2.5 pr-1">{currentUser}</span>
-                  <button type="button" onClick={handleLogout} title="Sair da conta" className="flex items-center gap-1 rounded-full bg-stone-100 hover:bg
+                  <button type="button" onClick={handleLogout} title="Sair da conta" className="flex items-center gap-1 rounded-full bg-stone-100 hover:bg-red-50 hover:text-red-700 px-2.5 py-1 text-xs font-bold text-stone-600 transition border border-stone-200/50">
+                    <Icon name="logOut" size={13}/>
+                    <span>Sair</span>
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {apiError && (
+              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2 text-xs font-semibold text-amber-900 flex items-center justify-between">
+                <span>⚠️ {apiError}</span>
+                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold ml-2">Tentar novamente</button>
+              </div>
+            )}
+
+            <main className="flex-1 overflow-y-auto overscroll-y-contain px-0 pb-28 lg:pb-12" style={{ WebkitOverflowScrolling: 'touch' }}>
+              <div className="w-full max-w-5xl mx-auto">
+                {tab === 'Agenda' ? (
+                  <div className="w-full px-4 py-6 md:px-8">
+                    <section className="mb-6 flex items-end justify-between">
+                      <div>
+                        <p className="text-sm text-stone-500">Visão da agenda</p>
+                        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight md:text-4xl">Horários marcados</h1>
+                      </div>
+                    </section>
+
+                    <section className="mb-6 flex items-center gap-2 w-full overflow-hidden">
+                      <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm">
+                        <Icon name="chevronLeft" size={18} />
+                      </button>
+
+                      <div className="flex-1 min-w-0 overflow-x-auto pb-1 [scrollbar-width:none]">
+                        <div className="flex min-w-max gap-2">
+                          {weekDays.map(day => (
+                            <button key={day.fullDate} type="button" onClick={() => setAppDate(day.fullDate)} className={`flex w-14 flex-col items-center rounded-2xl py-3 transition md:w-16 ${day.active ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/10' : 'bg-white text-stone-500 hover:bg-rose-50'}`}>
+                              <span className={`text-[10px] font-bold ${day.active ? 'text-white/60' : 'text-stone-400'}`}>{day.week}</span>
+                              <span className="mt-1 text-lg font-bold">{day.date}</span>
+                              {day.active && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#f2c4bb]"></span>}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <button type="button" onClick={() => changeWeek(7)} className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm">
+                        <Icon name="chevron" size={18} />
+                      </button>
+
+                      <button type="button" onClick={() => setDateModal(true)} className="flex items-center gap-2 h-14 px-3 sm:px-4 rounded-2xl bg-white border border-stone-200/80 text-stone-700 hover:bg-stone-50 transition shrink-0 shadow-sm">
+                        <Icon name="calendar" size={18} />
+                        <span className="text-xs font-bold text-stone-700">{appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}</span>
+                      </button>
+                    </section>
+
+                    <section className="mb-5 w-full">
+                      <div className="mb-2.5 flex items-center justify-between">
+                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Agendas da Equipe</p>
+                        <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#7c4851]">Visão compartilhada</span>
+                      </div>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                        {teamUsers.map(person => (
+                          <button key={person.name} type="button" onClick={() => { setAgendaProfessional(person.name); setProfessional(person.name); }} className={`flex min-w-0 items-center gap-2.5 rounded-2xl border p-2.5 text-left transition ${agendaProfessional === person.name ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' : 'border-stone-200 bg-white/70 hover:bg-white'}`}>
+                            <span className="grid w-8 h-8 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{(person.name || 'P')[0]}</span>
+                            <div className="min-w-0 flex-1">
+                              <span className="block truncate text-xs font-bold">{person.name}</span>
+                              <span className="block truncate text-[10px] text-stone-400">{person.role}</span>
+                            </div>
+                            {agendaProfessional === person.name && <span className="w-2 h-2 rounded-full bg-[#9d6269] shrink-0"></span>}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
+
+                    <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
+                      <div className="border-b border-stone-100 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div>
+                          <h2 className="font-serif text-lg font-bold">Agenda de {agendaProfessional}</h2>
+                          <p className="text-xs text-stone-400">{professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().join('/')}</p>
+                        </div>
+
+                        {canManageBlock && !hasFullDayBlock && (
+                          <button
+                            type="button"
+                            onClick={() => { 
+                              setBlockType('full'); 
+                              setBlockReason('Folga / Compromisso'); 
+                              setBlockModal(true); 
+                            }}
+                            className="flex items-center justify-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition self-start sm:self-auto">
+                            <Icon name="lock" size={14} />
+                            <span>Bloquear Dia / Horário</span>
+                          </button>
+                        )}
+                      </div>
+
+                      {dayBlocks.length > 0 && (
+                        <div className="bg-red-50/90 border-b border-red-200/80 divide-y divide-red-200/50">
+                          {dayBlocks.map((bl, idx) => (
+                            <div key={idx} className="px-5 py-3 flex items-center justify-between gap-3 text-red-800">
+                              <div className="flex items-center gap-3 min-w-0">
+                                <span className="grid w-8 h-8 shrink-0 place-items-center rounded-full bg-red-100 text-red-700">
+                                  <Icon name="lock" size={15} />
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-bold truncate">
+                                    {bl.fullDay ? 'Dia Inteiro Bloqueado' : `Horário Bloqueado: ${bl.startTime} às ${bl.endTime}`}
+                                  </p>
+                                  <p className="text-[11px] text-red-600 truncate">Motivo: {bl.reason}</p>
+                                </div>
+                              </div>
+                              {canManageBlock && (
+                                <button
+                                  type="button"
+                                  disabled={isTogglingBlock}
+                                  onClick={() => handleRemoveBlock(bl)}
+                                  className="flex items-center gap-1 rounded-xl bg-white border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition shrink-0">
+                                  <Icon name="unlock" size={13} />
+                                  <span>Desbloquear</span>
+                                </button>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+
+                      <div className="divide-y divide-stone-100">
+                        {professionalAppointments.map(({ item, index }) => (
+                          <button key={`${item.time}-${item.client}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-4 text-left transition hover:bg-[#fcf8f6]">
+                            <div className="w-14 shrink-0 pt-1">
+                              <p className="text-sm font-bold text-stone-800">{formatTime(item.time)}</p>
+                              <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
+                            </div>
+                            <div className={`w-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                            <div className="flex min-w-0 flex-1 items-center gap-3">
+                              <div className="grid w-10 h-10 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{String(item.client).slice(0, 2).toUpperCase()}</div>
+                              <div className="min-w-0 flex-1">
+                                <p className="truncate text-sm font-bold text-stone-800">{item.client}</p>
+                                <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
+                              </div>
+                              <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                                {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                              </span>
+                            </div>
+                          </button>
+                        ))}
+                        {professionalAppointments.length === 0 && (
+                          <div className="px-5 py-16 text-center text-stone-400">
+                            <p className="font-bold text-stone-700">{hasFullDayBlock ? 'Agenda fechada nesta data' : 'Nenhum horário marcado'}</p>
+                            <p className="text-xs text-stone-400 mt-1">
+                              {hasFullDayBlock 
+                                ? 'Desbloqueie acima caso queira liberar agendamentos.' 
+                                : `${agendaProfessional} está com a agenda livre nesta data.`}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </section>
+                  </div>
+                ) : (
+                  <OtherPage 
+                    tab={tab} 
+                    isAdmin={isAdmin} 
+                    currentUser={currentUser} 
+                    users={teamUsers} 
+                    allUsers={users}
+                    services={services} 
+                    appointments={appointments}
+                    clientsList={clientsList}
+                    onSaveClient={handleSaveManualClient}
+                    onEditClient={handleEditClient}
+                    onDeleteClient={handleDeleteClient}
+                    wppTemplate={wppTemplate}
+                    onSaveWppTemplateDirect={handleSaveWppTemplateDirect}
+                    formatWhatsappMessage={formatWhatsappMessage}
+                    onOpenUserModal={handleOpenUserModal} 
+                    onEditUser={handleOpenUserModal} 
+                    onOpenServiceModal={handleOpenServiceModal} 
+                    onEditService={handleOpenServiceModal} 
+                    onSelectAppointment={idx => setDetail(idx)} 
+                  />
+                )}
+              </div>
+            </main>
+
+            {(tab === 'Início' || tab === 'Agenda' || tab === 'Clientes') && (
+              <button 
+                type="button" 
+                onClick={() => { setShowClientSuggestions(false); setModal(true); }} 
+                aria-label="Novo horário" 
+                className="fixed bottom-20 right-8 lg:bottom-12 lg:right-14 z-30 grid w-14 h-14 place-items-center rounded-full bg-[#6f424a] text-white shadow-2xl border border-white/20 active:scale-95 hover:bg-[#5b363d] transition-all">
+                <Icon name="plus" size={24} />
+              </button>
+            )}
+          </div>
+
+          {/* MODAL BLOQUEAR DIA INTEIRO OU HORÁRIO ESPECÍFICO */}
+          {blockModal && (
+            <div onMouseDown={() => setBlockModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <div className="flex items-center gap-2">
+                    <span className="grid w-7 h-7 place-items-center rounded-lg bg-red-100 text-red-700">
+                      <Icon name="lock" size={15} />
+                    </span>
+                    <h3 className="font-serif text-lg font-bold text-stone-900">Bloquear Agenda</h3>
+                  </div>
+                  <button type="button" onClick={() => setBlockModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500">
+                    <Icon name="x" size={16} />
+                  </button>
+                </div>
+
+                <div className="mt-4 space-y-4">
+                  <p className="text-xs text-stone-600 leading-relaxed">
+                    Agenda de <b>{agendaProfessional}</b> em <b>{appDate.split('-').reverse().join('/')}</b>:
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setBlockType('full')}
+                      className={`rounded-xl py-2 text-xs font-bold transition ${blockType === 'full' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-500'}`}>
+                      Dia Inteiro
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setBlockType('partial')}
+                      className={`rounded-xl py-2 text-xs font-bold transition ${blockType === 'partial' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-500'}`}>
+                      Horário Específico
+                    </button>
+                  </div>
+
+                  {blockType === 'partial' && (
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="text-xs font-bold text-stone-600 block mb-1">Das (Início)</label>
+                        <input
+                          type="time"
+                          value={blockStartTime}
+                          onChange={e => setBlockStartTime(e.target.value)}
+                          className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-xs font-bold text-stone-600 block mb-1">Até (Término)</label>
+                        <input
+                          type="time"
+                          value={blockEndTime}
+                          onChange={e => setBlockEndTime(e.target.value)}
+                          className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Motivo do bloqueio:</label>
+                    <input 
+                      type="text" 
+                      value={blockReason} 
+                      onChange={e => setBlockReason(e.target.value)} 
+                      placeholder="Ex: Almoço, Folga, Curso..."
+                      className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
+                    />
+                  </div>
+                </div>
+
+                <div className="mt-5 flex gap-2">
+                  <button type="button" onClick={() => setBlockModal(false)} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-50 transition">
+                    Cancelar
+                  </button>
+                  <button 
+                    type="button" 
+                    disabled={isTogglingBlock}
+                    onClick={handleCreateBlock} 
+                    className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition">
+                    {isTogglingBlock ? 'Bloqueando...' : 'Confirmar Bloqueio'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL SERVIÇOS */}
+          {serviceModal && (
+            <div onMouseDown={() => setServiceModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <h3 className="font-serif text-lg font-bold text-stone-900">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h3>
+                  <button type="button" onClick={() => setServiceModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Nome do Procedimento</label>
+                    <input type="text" value={servName} onChange={e => setServName(e.target.value)} placeholder="Ex: Manicure, Mechas..." className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="text-xs font-bold text-stone-600 block mb-1">Duração</label>
+                      <input type="text" value={servTime} onChange={e => setServTime(e.target.value)} placeholder="60 min" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                    </div>
+                    <div>
+                      <label className="text-xs font-bold text-stone-600 block mb-1">Preço (R$)</label>
+                      <input type="number" step="0.01" value={servPrice} onChange={e => setServPrice(e.target.value)} placeholder="100.00" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                    </div>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-2">
+                  <button type="button" onClick={handleSaveService} className="w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] transition">Salvar Serviço</button>
+                  {editingService && (
+                    <button type="button" onClick={handleDeleteService} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Excluir Serviço</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL PROFISSIONAIS */}
+          {userModal && (
+            <div onMouseDown={() => setUserModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100 max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <h3 className="font-serif text-lg font-bold text-stone-900">{editingUser ? 'Editar Perfil' : 'Nova Profissional'}</h3>
+                  <button type="button" onClick={() => setUserModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
+                </div>
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Nome</label>
+                    <input type="text" value={colabName} onChange={e => setColabName(e.target.value)} placeholder="Nome" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Função / Cargo</label>
+                    <input type="text" value={colabRole} onChange={e => setColabRole(e.target.value)} placeholder="Ex: Cabeleireira, Manicure, Desenvolvedor" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                  </div>
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Senha de Acesso</label>
+                    <input type="password" value={colabPass} onChange={e => setColabPass(e.target.value)} placeholder="Defina uma senha" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
+                  </div>
+                  <div className="pt-1">
+                    <label className="flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 border border-stone-200/80 cursor-pointer select-none">
+                      <input 
+                        type="checkbox" 
+                        checked={colabIsAdmin} 
+                        onChange={e => setColabIsAdmin(e.target.checked)} 
+                        className="w-4 h-4 rounded text-[#6f424a] accent-[#6f424a]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-stone-800 block">Acesso Administrador</span>
+                        <span className="text-[10px] text-stone-400 block">Pode gerenciar equipe, procedimentos e financeiro</span>
+                      </div>
+                    </label>
+                  </div>
+                </div>
+                <div className="mt-5 space-y-2">
+                  <button type="button" onClick={handleSaveUser} className="w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] transition">Salvar Perfil</button>
+                  {editingUser && editingUser.name.toLowerCase() !== 'carol' && (
+                    <button type="button" onClick={handleDeleteUser} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Excluir Perfil</button>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL DATA */}
+          {dateModal && (
+            <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
+                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
+                  <h3 className="font-serif text-lg font-bold text-stone-900">Escolher Data</h3>
+                  <button type="button" onClick={() => setDateModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
+                </div>
+                <div className="mt-4 space-y-4">
+                  <button type="button" onClick={() => { setAppDate(getTodayISO()); setDateModal(false); }} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#faf0ed] hover:bg-[#f3ded9] text-[#6f424a] py-3 text-sm font-bold border border-rose-200/60 transition">
+                    <Icon name="sparkles" size={16} /> Ir para Hoje ({new Date().toLocaleDateString('pt-BR')})
+                  </button>
+                  <input type="date" value={appDate} onChange={e => { if (e.target.value) setAppDate(e.target.value); }} className="w-full block rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold text-center outline-none"/>
+                </div>
+                <button type="button" onClick={() => setDateModal(false)} className="mt-5 w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white transition">Confirmar Data</button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL NOVO AGENDAMENTO */}
+          {modal && (
+            <div onMouseDown={() => setModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
+                <div className="flex items-start justify-between">
+                  <h2 className="font-serif text-2xl font-bold">Novo agendamento</h2>
+                  <button type="button" onClick={() => setModal(false)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
+                </div>
+                <div className="mt-5 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="relative">
+                      <span className="text-xs font-bold text-stone-600 block">Cliente</span>
+                      <input 
+                        value={client} 
+                        onFocus={() => setShowClientSuggestions(true)}
+                        onChange={e => { setClient(e.target.value); setShowClientSuggestions(true); }} 
+                        placeholder="Digite o nome (ex: João)..." 
+                        autoComplete="off"
+                        className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none focus:border-[#9d6269] focus:bg-white" 
+                      />
+                      {showClientSuggestions && clientSuggestions.length > 0 && (
+                        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-44 overflow-y-auto rounded-2xl border border-stone-200 bg-white shadow-xl divide-y divide-stone-100">
+                          {clientSuggestions.map((c, idx) => (
+                            <button
+                              key={`${c.name}-${idx}`}
+                              type="button"
+                              onClick={() => {
+                                setClient(c.name);
+                                if (c.phone) setClientPhone(c.phone);
+                                setShowClientSuggestions(false);
+                              }}
+                              className="flex w-full items-center justify-between px-3.5 py-2.5 text-left hover:bg-[#fcf8f6] transition">
+                              <span className="text-xs font-bold text-stone-800 truncate">{c.name}</span>
+                              <span className="text-[11px] text-stone-400 ml-2 shrink-0">{c.phone || ''}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <label className="block">
+                      <span className="text-xs font-bold text-stone-600">WhatsApp (opcional)</span>
+                      <input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="(51) 99999-9999" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Serviço</span>
+                    <select value={service} onChange={e => setService(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
+                      {services.map(s => <option key={s.name} value={s.name}>{s.name} ({formatCurrency(s.price)})</option>)}
+                    </select>
+                  </label>
+                  <div className="grid grid-cols-2 gap-3">
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Data</span>
+                      <input type="date" min={getTodayISO()} value={appDate < getTodayISO() ? getTodayISO() : appDate} onChange={e => setAppDate(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" />
+                    </label>
+                    <label>
+                      <span className="text-xs font-bold text-stone-600">Início</span>
+                      <input type="time" value={time} onChange={e => setTime(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" />
+                    </label>
+                  </div>
+                  <label className="block">
+                    <span className="text-xs font-bold text-stone-600">Profissional</span>
+                    <select value={professional} onChange={e => setProfessional(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
+                      {teamUsers.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role})</option>)}
+                    </select>
+                  </label>
+                </div>
+                <button 
+                  type="button" 
+                  onClick={addAppointment} 
+                  disabled={isSaving}
+                  className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white transition ${
+                    isSaving ? 'bg-stone-400 cursor-not-allowed' : 'bg-[#6f424a] hover:bg-[#5b363d]'
+                  }`}>
+                  {isSaving ? 'Agendando...' : 'Confirmar Agendamento'}
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* MODAL DETALHES */}
+          {detail !== null && appointments[detail] && (
+            <div onMouseDown={() => setDetail(null)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+              <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem]">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                      Status: {appointments[detail].status}
+                    </span>
+                    <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
+                  </div>
+                  <button type="button" onClick={() => setDetail(null)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
+                </div>
+                
+                <div className="my-4 rounded-2xl bg-stone-50 p-4 space-y-1.5">
+                  <p className="text-sm font-bold text-stone-800">{appointments[detail].service} · {formatCurrency(appointments[detail].price)}</p>
+                  <p className="text-xs text-stone-500">📅 Data: {appointments[detail].date.split('-').reverse().join('/')} às {formatTime(appointments[detail].time)}–{formatTime(appointments[detail].end)}</p>
+                  <p className="text-xs text-stone-400">💅 Profissional: {appointments[detail].pro}</p>
+                  {appointments[detail].phone ? (
+                    <p className="text-xs text-stone-600 font-semibold pt-1">📱 {appointments[detail].phone}</p>
+                  ) : (
+                    <p className="text-[11px] text-stone-400 italic pt-1">Sem telefone cadastrado (abrirá o WhatsApp para escolher contato)</p>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex gap-2 items-center">
+                    <button 
+                      type="button" 
+                      onClick={() => handleSendWhatsapp(appointments[detail])} 
+                      className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-sm font-bold text-white transition shadow-sm active:scale-98">
+                      <Icon name="whatsapp" size={18} />
+                      <span>Enviar WhatsApp</span>
+                    </button>
+                    <button 
+                      type="button" 
+                      onClick={() => { setDetail(null); setTab('Mensagem WhatsApp'); }} 
+                      title="Editar mensagem padrão do WhatsApp" 
+                      className="grid w-11 h-11 shrink-0 place-items-center rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-600 transition shadow-sm">
+                      <Icon name="settings" size={17} />
+                    </button>
+                  </div>
+
+                  <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
+                    {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
+                  </button>
+                  <button type="button" onClick={() => cancelAppointment(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Cancelar Horário</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {toast && (
+            <div className="fixed bottom-24 left-1/2 z-[80] -translate-x-1/2 whitespace-nowrap rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
+              {toast}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
