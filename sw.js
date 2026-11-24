@@ -24,8 +24,8 @@ self.addEventListener('push', (event) => {
 
     return self.registration.showNotification(data.title, {
       body: data.body,
-      icon: 'https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png',
-      badge: 'https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png',
+      icon: './logo.png',
+      badge: './logo.png',
       vibrate: [200, 100, 200],
       tag: 'espaco101-' + Date.now(),
       renotify: true,
