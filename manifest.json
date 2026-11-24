@@ -1,0 +1,20 @@
+{
+  "name": "Espaço 101 - Gestão",
+  "short_name": "Espaço 101",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#f8f5f2",
+  "theme_color": "#6f424a",
+  "icons": [
+    {
+      "src": "https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
