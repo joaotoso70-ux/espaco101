@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {
-      title: 'Novo Agendamento',
+      title: '📅 Novo Agendamento',
       body: 'Um novo horário foi marcado na agenda.'
     };
 
@@ -26,7 +26,6 @@ self.addEventListener('push', (event) => {
       }
     } catch (e) {}
 
-    // Avisa o app caso esteja aberto na tela para tocar a campainha sonora
     const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
     for (const client of allClients) {
       client.postMessage({ type: 'PUSH_RECEIVED', data });
@@ -36,7 +35,7 @@ self.addEventListener('push', (event) => {
       body: data.body,
       icon: './logo.png',
       badge: './logo.png',
-      silent: false, // Garante som e vibração padrão do celular
+      silent: false,
       vibrate: [250, 100, 250],
       tag: 'espaco101-' + Date.now(),
       renotify: true,
