@@ -1110,6 +1110,7 @@
 
       const [blockModal, setBlockModal] = useState(false);
       const [blockType, setBlockType] = useState('full');
+      const [blockDate, setBlockDate] = useState(getTodayISO());
       const [blockStartTime, setBlockStartTime] = useState('12:00');
       const [blockEndTime, setBlockEndTime] = useState('13:30');
       const [blockReason, setBlockReason] = useState('Folga / Compromisso');
@@ -1250,12 +1251,19 @@
 
       const handleCreateBlock = async () => {
         if (isTogglingBlock) return;
+        const targetDate = blockDate || appDate;
+        if (targetDate < getTodayISO()) {
+          setToast('⚠️ Escolha hoje ou uma data futura para bloquear.');
+          setTimeout(() => setToast(''), 3500);
+          return;
+        }
+
         setIsTogglingBlock(true);
         const hIni = blockType === 'partial' ? blockStartTime : '';
         const hFim = blockType === 'partial' ? blockEndTime : '';
 
         const res = await callAPI('adicionarBloqueioAgenda', {
-          data: appDate,
+          data: targetDate,
           proAlvo: agendaProfessional,
           motivo: blockReason,
           horaInicio: hIni,
@@ -1267,9 +1275,11 @@
 
         if (res && res.sucesso) {
           if (res.bloqueios) setBlockedDays(res.bloqueios);
+          setAppDate(targetDate);
+          const dataBR = targetDate.split('-').reverse().join('/');
           setToast(blockType === 'full' 
-            ? `🔒 Dia inteiro bloqueado para ${agendaProfessional}!` 
-            : `🔒 Horário (${hIni} às ${hFim}) bloqueado!`);
+            ? `🔒 Dia ${dataBR} bloqueado para ${agendaProfessional}!` 
+            : `🔒 ${dataBR} (${hIni} às ${hFim}) bloqueado!`);
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao bloquear agenda.'));
         }
@@ -1907,11 +1917,12 @@
                           <p className="text-xs text-stone-400">{professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().join('/')}</p>
                         </div>
 
-                        {canManageBlock && !hasFullDayBlock && (
+                        {canManageBlock && (
                           <button
                             type="button"
                             onClick={() => { 
                               setBlockType('full'); 
+                              setBlockDate(appDate < getTodayISO() ? getTodayISO() : appDate);
                               setBlockReason('Folga / Compromisso'); 
                               setBlockModal(true); 
                             }}
@@ -2044,8 +2055,19 @@
 
                 <div className="mt-4 space-y-4">
                   <p className="text-xs text-stone-600 leading-relaxed">
-                    Agenda de <b>{agendaProfessional}</b> em <b>{appDate.split('-').reverse().join('/')}</b>:
+                    Profissional: <b>{agendaProfessional}</b>
                   </p>
+
+                  <div>
+                    <label className="text-xs font-bold text-stone-600 block mb-1">Data do bloqueio:</label>
+                    <input
+                      type="date"
+                      min={getTodayISO()}
+                      value={blockDate}
+                      onChange={e => { if (e.target.value) setBlockDate(e.target.value); }}
+                      className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-semibold outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
+                    />
+                  </div>
 
                   <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1.5">
                     <button
