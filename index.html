@@ -13,59 +13,45 @@
   <title>Espaço 101 - Gestão</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #f8f5f2; font-family: sans-serif; }
-    iframe { width: 100%; height: 100%; border: none; display: block; position: relative; z-index: 2; background: transparent; }
-    #loader {
-      position: fixed; inset: 0; z-index: 1;
+    html, body {
+      width: 100%; height: 100%; height: 100dvh;
+      background: #f8f5f2; font-family: sans-serif;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      background: #f8f5f2; color: #6f424a; text-align: center; padding: 20px;
+      text-align: center; padding: 24px; color: #6f424a;
     }
-    #loader img { width: 96px; height: 96px; border-radius: 50%; object-fit: cover; margin-bottom: 14px; box-shadow: 0 6px 20px rgba(0,0,0,0.1); }
-    #btnDirect {
-      margin-top: 18px; background: #6f424a; color: #fff; border: none;
-      padding: 12px 22px; border-radius: 12px; font-size: 13px; font-weight: 700;
-      display: none; cursor: pointer;
-    }
-    #btnNotify {
-      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #251d20; color: #eeb9af; border: 1px solid #6f424a;
-      padding: 11px 20px; border-radius: 999px; font-size: 12px; font-weight: 700;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3); cursor: pointer; display: none; white-space: nowrap;
+    img { width: 104px; height: 104px; border-radius: 50%; object-fit: cover; margin-bottom: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); border: 1px solid #e7d8ce; }
+    .btn {
+      margin-top: 20px; background: #251d20; color: #eeb9af; border: 1px solid #6f424a;
+      padding: 13px 22px; border-radius: 999px; font-size: 13px; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2); cursor: pointer; display: none;
     }
   </style>
 </head>
 <body>
-  <div id="loader">
-    <img src="./logo.png" alt="Espaço 101" />
-    <p style="font-size: 13px; font-weight: 700; letter-spacing: 1.5px;">CARREGANDO ESPAÇO 101...</p>
-    <button id="btnDirect" onclick="abrirDireto()">Abrir Painel Agora</button>
-  </div>
-
-  <button id="btnNotify" onclick="ativarNotificacoes()">🔔 Ativar Notificações neste Celular</button>
-  <iframe id="appFrame" allow="autoplay"></iframe>
+  <img src="./logo.png" alt="Espaço 101" />
+  <p id="statusText" style="font-size: 13px; font-weight: 700; letter-spacing: 1.5px;">ABRINDO ESPAÇO 101...</p>
+  <button id="btnNotify" class="btn" onclick="ativarNotificacoes()">🔔 Ativar Notificações neste Celular</button>
 
   <script>
     const BASE_GAS_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
     const VAPID_PUBLIC_KEY = "BMGDyo7TIpfyKf5z_9Dy5pcyARHAv25n-fZcANGUtL8s6nHDlYRtqFiQniMZsahQV3Ez2s6gMmcZVKl1Lb7riXU";
 
-    const frame = document.getElementById("appFrame");
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.get('logout') === '1') {
+      localStorage.removeItem('espaco101_auth_u');
+      localStorage.removeItem('espaco101_auth_p');
+    } else if (urlParams.get('u') && urlParams.get('p')) {
+      localStorage.setItem('espaco101_auth_u', urlParams.get('u'));
+      localStorage.setItem('espaco101_auth_p', urlParams.get('p'));
+    }
+
     const savedU = localStorage.getItem('espaco101_auth_u') || '';
     const savedP = localStorage.getItem('espaco101_auth_p') || '';
+    const githubReturnUrl = window.location.origin + window.location.pathname;
 
     const targetUrl = (savedU && savedP)
-      ? `${BASE_GAS_URL}?u=${encodeURIComponent(savedU)}&p=${encodeURIComponent(savedP)}`
-      : BASE_GAS_URL;
-
-    frame.src = targetUrl;
-
-    // Se demorar mais de 6 segundos (ex: bloqueio de iframe no navegador), libera botão direto
-    setTimeout(() => {
-      document.getElementById('btnDirect').style.display = 'inline-block';
-    }, 6000);
-
-    function abrirDireto() {
-      window.location.href = targetUrl;
-    }
+      ? `${BASE_GAS_URL}?u=${encodeURIComponent(savedU)}&p=${encodeURIComponent(savedP)}&gh=${encodeURIComponent(githubReturnUrl)}`
+      : `${BASE_GAS_URL}?gh=${encodeURIComponent(githubReturnUrl)}`;
 
     function urlBase64ToUint8Array(base64String) {
       const padding = '='.repeat((4 - base64String.length % 4) % 4);
@@ -74,28 +60,6 @@
       const outputArray = new Uint8Array(rawData.length);
       for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
       return outputArray;
-    }
-
-    async function iniciarPWA() {
-      if ('serviceWorker' in navigator && 'PushManager' in window) {
-        await navigator.serviceWorker.register('./sw.js');
-        if (Notification.permission === 'default') {
-          document.getElementById('btnNotify').style.display = 'block';
-        } else if (Notification.permission === 'granted') {
-          registrarAssinatura();
-        }
-      }
-    }
-
-    async function ativarNotificacoes() {
-      const perm = await Notification.requestPermission();
-      if (perm === 'granted') {
-        document.getElementById('btnNotify').style.display = 'none';
-        await registrarAssinatura();
-        alert('✅ Notificações ativadas neste aparelho!');
-      } else {
-        alert('⚠️ Permissão bloqueada. Libere as notificações nos Ajustes do aparelho.');
-      }
     }
 
     async function registrarAssinatura() {
@@ -108,35 +72,45 @@
             applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
           });
         }
-        const usuarioAtual = localStorage.getItem('espaco101_auth_u') || 'Equipe';
         await fetch(BASE_GAS_URL, {
           method: 'POST',
           mode: 'no-cors',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             acao: 'registrar_push',
-            usuario: usuarioAtual,
+            usuario: savedU || 'Equipe',
             subscription: sub.toJSON()
           })
         });
-      } catch (e) {
-        console.error('Erro ao registrar push:', e);
+      } catch (e) {}
+    }
+
+    async function ativarNotificacoes() {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        await registrarAssinatura();
+        window.location.replace(targetUrl);
+      } else {
+        alert('⚠️ Permissão bloqueada. Libere as notificações nos Ajustes do celular.');
+        window.location.replace(targetUrl);
       }
     }
 
-    window.addEventListener('message', (event) => {
-      if (!event.data) return;
-      if (event.data.type === 'AUTO_LOGIN') {
-        localStorage.setItem('espaco101_auth_u', event.data.user || '');
-        localStorage.setItem('espaco101_auth_p', event.data.pass || '');
-        if (Notification.permission === 'granted') registrarAssinatura();
-      } else if (event.data.type === 'LOGOUT') {
-        localStorage.removeItem('espaco101_auth_u');
-        localStorage.removeItem('espaco101_auth_p');
+    async function iniciar() {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        await navigator.serviceWorker.register('./sw.js');
+        if (Notification.permission === 'default') {
+          document.getElementById('statusText').innerText = 'ATIVE AS NOTIFICAÇÕES PARA CONTINUAR';
+          document.getElementById('btnNotify').style.display = 'inline-block';
+          return;
+        } else if (Notification.permission === 'granted') {
+          await registrarAssinatura();
+        }
       }
-    });
+      window.location.replace(targetUrl);
+    }
 
-    iniciarPWA();
+    iniciar();
   </script>
 </body>
 </html>
