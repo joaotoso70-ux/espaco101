@@ -11,22 +11,33 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {
-      title: 'Espaço 101',
-      body: 'Nova atualização na agenda!'
+      title: '📅 Novo Agendamento',
+      body: 'Um novo horário foi marcado na agenda.'
     };
 
     try {
-      const resp = await fetch(GAS_URL + '?acao=ultima_notificacao&t=' + Date.now());
+      const resp = await fetch(GAS_URL + '?acao=ultima_notificacao&t=' + Date.now(), {
+        redirect: 'follow',
+        cache: 'no-store'
+      });
       if (resp.ok) {
-        data = await resp.json();
+        const json = await resp.json();
+        if (json && json.title) data = json;
       }
     } catch (e) {}
+
+    // Avisa o app caso esteja aberto na tela para tocar a campainha sonora
+    const allClients = await clients.matchAll({ type: 'window', includeUncontrolled: true });
+    for (const client of allClients) {
+      client.postMessage({ type: 'PUSH_RECEIVED', data });
+    }
 
     return self.registration.showNotification(data.title, {
       body: data.body,
       icon: './logo.png',
       badge: './logo.png',
-      vibrate: [200, 100, 200],
+      silent: false, // Garante som e vibração padrão do celular
+      vibrate: [250, 100, 250],
       tag: 'espaco101-' + Date.now(),
       renotify: true,
       data: { url: self.registration.scope }
