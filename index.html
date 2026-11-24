@@ -139,27 +139,34 @@
       }
     }
 
-    // Comunicação direta via Fetch (GET/POST) com o Google Apps Script sem iframe
     const callAPI = async (acao, payload = {}) => {
       try {
+        let resp;
         if (acao === 'obterDadosIniciais') {
-          const resp = await fetch(`${API_URL}?acao=obterDadosIniciais&t=${Date.now()}`, {
+          resp = await fetch(`${API_URL}?acao=obterDadosIniciais&t=${Date.now()}`, {
             method: 'GET',
             redirect: 'follow'
           });
-          return await resp.json();
         } else {
-          const resp = await fetch(API_URL, {
+          resp = await fetch(API_URL, {
             method: 'POST',
             redirect: 'follow',
             headers: { 'Content-Type': 'text/plain;charset=utf-8' },
             body: JSON.stringify({ acao, ...payload })
           });
-          return await resp.json();
+        }
+        const text = await resp.text();
+        try {
+          return JSON.parse(text);
+        } catch (parseErr) {
+          return {
+            sucesso: false,
+            erro: 'A implantação do Apps Script ainda está devolvendo a página antiga (HTML) em vez de JSON. Publique uma Nova versão do Código.gs.'
+          };
         }
       } catch (err) {
         console.error("Erro API:", err);
-        return { sucesso: false, erro: err.message || "Erro de conexão" };
+        return { sucesso: false, erro: err.message || "Erro de conexão com o Google Sheets." };
       }
     };
 
@@ -1136,7 +1143,6 @@
         return clientsList.filter(c => String(c.name).toLowerCase().includes(termo));
       }, [client, clientsList]);
 
-      // Inicializa Service Worker e verifica permissão de notificação direto no GitHub
       useEffect(() => {
         (async () => {
           if ('serviceWorker' in navigator && 'PushManager' in window) {
@@ -1220,7 +1226,7 @@
             }
           }
         } else {
-          setApiError('Não foi possível sincronizar com o Google Sheets.');
+          setApiError(dados?.erro || 'Não foi possível sincronizar com o Google Sheets.');
         }
       };
 
@@ -1306,7 +1312,6 @@
           return;
         }
 
-        // Salva a sessão permanentemente no domínio do GitHub
         try {
           localStorage.setItem('espaco101_user_session', found.name);
         } catch(err) {}
@@ -1654,9 +1659,17 @@
               <p className="text-xs text-white/30">Espaço 101 · Studio</p>
             </section>
             
-            <section className="flex items-center justify-center p-5 md:p-10 w-full">
+            <section className="flex items-center justify-center p-5 md:p-10 w-full overflow-y-auto">
               <div className="w-full max-w-md">
-                <div className="mb-8 flex items-center gap-3 lg:hidden"><BrandMark small/><p className="font-serif text-xl font-bold">Espaço 101</p></div>
+                <div className="mb-6 flex items-center gap-3 lg:hidden"><BrandMark small/><p className="font-serif text-xl font-bold">Espaço 101</p></div>
+
+                {apiError && (
+                  <div className="mb-5 rounded-2xl bg-amber-100 border border-amber-300 p-3.5 text-xs font-semibold text-amber-900">
+                    <p>⚠️ {apiError}</p>
+                    <button type="button" onClick={carregarDadosDaPlanilha} className="mt-2 underline font-bold">Tentar sincronizar novamente</button>
+                  </div>
+                )}
+
                 <p className="text-xs font-bold uppercase tracking-[.2em] text-[#9d6269]">Acesso da Equipe</p>
                 <h2 className="mt-2 font-serif text-4xl font-bold">Entrar</h2>
                 <p className="mt-2 text-sm text-stone-500">Selecione seu perfil abaixo.</p>
@@ -1807,9 +1820,9 @@
             </header>
 
             {apiError && (
-              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2 text-xs font-semibold text-amber-900 flex items-center justify-between">
+              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2 text-xs font-semibold text-amber-900 flex items-center justify-between gap-2">
                 <span>⚠️ {apiError}</span>
-                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold ml-2">Tentar novamente</button>
+                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold shrink-0">Tentar novamente</button>
               </div>
             )}
 
