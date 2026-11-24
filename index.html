@@ -1,70 +1,102 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>Espaço 101</title>
-  
-  <link rel="apple-touch-icon" sizes="180x180" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
-  <link rel="icon" type="image/png" sizes="192x192" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
-  <link rel="shortcut icon" href="https://joaotoso70-ux.github.io/espaco101/logo.png">
-  
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Espaço 101">
-
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Espaço 101" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="apple-touch-icon" href="https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png" />
+  <link rel="icon" type="image/png" href="https://i.ibb.co/m5WybQcx/logo-espaco-101-original.png" />
+  <title>Espaço 101 - Gestão</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body {
-      width: 100%;
-      height: 100%;
-      height: 100dvh;
-      overflow: hidden;
-      background-color: #f8f5f2;
-    }
-    iframe {
-      border: 0;
-      width: 100%;
-      height: 100%;
-      height: 100dvh;
-      display: block;
+    html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #f8f5f2; font-family: sans-serif; }
+    iframe { width: 100%; height: 100%; border: none; display: block; }
+    #btnNotify {
+      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
+      z-index: 9999; background: #251d20; color: #eeb9af; border: 1px solid #6f424a;
+      padding: 11px 20px; border-radius: 999px; font-size: 12px; font-weight: 700;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.3); cursor: pointer; display: none; white-space: nowrap;
     }
   </style>
 </head>
 <body>
-  <iframe id="agendaFrame" allow="fullscreen"></iframe>
+  <button id="btnNotify" onclick="ativarNotificacoes()">🔔 Ativar Notificações neste Celular</button>
+  
+  <iframe id="appFrame" src="https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec"></iframe>
 
   <script>
-    const GOOGLE_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
-    
-    // Lê as credenciais salvas no armazenamento nativo do iPhone
-    const savedUser = localStorage.getItem('espaco101_user') || '';
-    const savedPass = localStorage.getItem('espaco101_pass') || '';
-    
-    let destUrl = GOOGLE_URL;
-    if (savedUser && savedPass) {
-      destUrl += "?u=" + encodeURIComponent(savedUser) + "&p=" + encodeURIComponent(savedPass);
-    }
-    
-    document.getElementById('agendaFrame').src = destUrl;
+    const VAPID_PUBLIC_KEY = "BMGDyo7TIpfyKf5z_9Dy5pcyARHAv25n-fZcANGUtL8s6nHDlYRtqFiQniMZsahQV3Ez2s6gMmcZVKl1Lb7riXU";
+    const GAS_URL = document.getElementById("appFrame").src;
 
-    // Escuta a mensagem enviada pelo aplicativo
-    window.addEventListener('message', function(event) {
+    function urlBase64ToUint8Array(base64String) {
+      const padding = '='.repeat((4 - base64String.length % 4) % 4);
+      const base64 = (base64String + padding).replace(/\-/g, '+').replace(/_/g, '/');
+      const rawData = window.atob(base64);
+      const outputArray = new Uint8Array(rawData.length);
+      for (let i = 0; i < rawData.length; ++i) outputArray[i] = rawData.charCodeAt(i);
+      return outputArray;
+    }
+
+    async function iniciarPWA() {
+      if ('serviceWorker' in navigator && 'PushManager' in window) {
+        await navigator.serviceWorker.register('./sw.js');
+        if (Notification.permission === 'default') {
+          document.getElementById('btnNotify').style.display = 'block';
+        } else if (Notification.permission === 'granted') {
+          registrarAssinatura();
+        }
+      }
+    }
+
+    async function ativarNotificacoes() {
+      const perm = await Notification.requestPermission();
+      if (perm === 'granted') {
+        document.getElementById('btnNotify').style.display = 'none';
+        await registrarAssinatura();
+        alert('✅ Notificações ativadas neste aparelho!');
+      } else {
+        alert('⚠️ Permissão bloqueada. Libere as notificações nas configurações do navegador.');
+      }
+    }
+
+    async function registrarAssinatura() {
       try {
-        let data = event.data;
-        if (typeof data === 'string') {
-          try { data = JSON.parse(data); } catch(e) {}
+        const reg = await navigator.serviceWorker.ready;
+        let sub = await reg.pushManager.getSubscription();
+        if (!sub) {
+          sub = await reg.pushManager.subscribe({
+            userVisibleOnly: true,
+            applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+          });
         }
-        if (data && data.type === 'AUTO_LOGIN') {
-          localStorage.setItem('espaco101_user', String(data.user));
-          localStorage.setItem('espaco101_pass', String(data.pass));
-        }
-        if (data && data.type === 'LOGOUT') {
-          localStorage.removeItem('espaco101_user');
-          localStorage.removeItem('espaco101_pass');
-        }
-      } catch(err) {}
-    }, false);
+        const usuarioAtual = localStorage.getItem('espaco101_user_session') || 'Equipe';
+        await fetch(GAS_URL, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            acao: 'registrar_push',
+            usuario: usuarioAtual,
+            subscription: sub.toJSON()
+          })
+        });
+      } catch (e) {
+        console.error('Erro ao registrar push:', e);
+      }
+    }
+
+    window.addEventListener('message', (event) => {
+      if (event.data && event.data.type === 'AUTO_LOGIN') {
+        localStorage.setItem('espaco101_user_session', event.data.user);
+        if (Notification.permission === 'granted') registrarAssinatura();
+      }
+    });
+
+    iniciarPWA();
   </script>
 </body>
 </html>
