@@ -11,8 +11,8 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {
-      title: '',
-      body: 'Novo Agendamento\nUm novo horário foi marcado na agenda.'
+      title: 'Novo Agendamento',
+      body: 'Um novo horário foi marcado na agenda.'
     };
 
     try {
@@ -31,13 +31,7 @@ self.addEventListener('push', (event) => {
       client.postMessage({ type: 'PUSH_RECEIVED', data });
     }
 
-    const ua = (self.navigator && self.navigator.userAgent) ? self.navigator.userAgent : '';
-    const isAndroid = /Android/i.test(ua);
-
-    // No Android mostra "Espaço 101" no título. No iPhone usa caractere invisível para não puxar a 1ª linha.
-    const tituloFinal = isAndroid ? (data.title || 'Espaço 101') : '\u200B';
-
-    return self.registration.showNotification(tituloFinal, {
+    return self.registration.showNotification(data.title || 'Espaço 101', {
       body: data.body,
       icon: './logo.png',
       badge: './logo.png',
