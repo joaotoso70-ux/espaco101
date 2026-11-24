@@ -11,7 +11,7 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('push', (event) => {
   event.waitUntil((async () => {
     let data = {
-      title: '📅 Novo Agendamento',
+      title: 'Novo Agendamento',
       body: 'Um novo horário foi marcado na agenda.'
     };
 
