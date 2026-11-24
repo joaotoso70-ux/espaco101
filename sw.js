@@ -31,7 +31,14 @@ self.addEventListener('push', (event) => {
       client.postMessage({ type: 'PUSH_RECEIVED', data });
     }
 
-    return self.registration.showNotification(data.title || '', {
+    const ua = (self.navigator && self.navigator.userAgent) ? self.navigator.userAgent : '';
+    const isIOS = /iPhone|iPad|iPod/i.test(ua);
+
+    // No iPhone fica vazio (usa o "from Espaço 101" como título).
+    // No Android/PC usa "Espaço 101" como título em negrito.
+    const tituloFinal = isIOS ? '' : (data.title || 'Espaço 101');
+
+    return self.registration.showNotification(tituloFinal, {
       body: data.body,
       icon: './logo.png',
       badge: './logo.png',
