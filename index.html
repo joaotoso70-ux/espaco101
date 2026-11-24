@@ -1,38 +1,7 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-  <meta name="apple-mobile-web-app-title" content="Espaço 101" />
-  <link rel="manifest" href="./manifest.json" />
-  <link rel="apple-touch-icon" href="./logo.png" />
-  <link rel="icon" type="image/png" href="./logo.png" />
-  <title>Espaço 101 - Gestão</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    html, body { width: 100%; height: 100%; height: 100dvh; overflow: hidden; background: #f8f5f2; font-family: sans-serif; }
-    iframe { width: 100%; height: 100%; border: none; display: block; }
-    #btnNotify {
-      position: fixed; bottom: 88px; left: 50%; transform: translateX(-50%);
-      z-index: 9999; background: #251d20; color: #eeb9af; border: 1px solid #6f424a;
-      padding: 11px 20px; border-radius: 999px; font-size: 12px; font-weight: 700;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.3); cursor: pointer; display: none; white-space: nowrap;
-    }
-  </style>
-</head>
-<body>
-  <button id="btnNotify" onclick="ativarNotificacoes()">🔔 Ativar Notificações neste Celular</button>
-  
-  <iframe id="appFrame"></iframe>
-
-  <script>
+<script>
     const BASE_GAS_URL = "https://script.google.com/macros/s/AKfycby2LVsIAlXthCBCUUXSfU-7KAx8p_PLwUJkTfOZz5ad5xohc8lhdFU0ZpAiR7Qs-lz6/exec";
     const VAPID_PUBLIC_KEY = "BMGDyo7TIpfyKf5z_9Dy5pcyARHAv25n-fZcANGUtL8s6nHDlYRtqFiQniMZsahQV3Ez2s6gMmcZVKl1Lb7riXU";
 
-    // Carrega o iframe já injetando o usuário/senha salvos para não pedir login ao fechar o app
     const frame = document.getElementById("appFrame");
     const savedU = localStorage.getItem('espaco101_auth_u') || '';
     const savedP = localStorage.getItem('espaco101_auth_p') || '';
@@ -41,6 +10,39 @@
       frame.src = `${BASE_GAS_URL}?u=${encodeURIComponent(savedU)}&p=${encodeURIComponent(savedP)}`;
     } else {
       frame.src = BASE_GAS_URL;
+    }
+
+    function tocarCampainhaNotificacao() {
+      try {
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        const ctx = new AudioCtx();
+        const now = ctx.currentTime;
+
+        // Nota 1 (Mi5)
+        const osc1 = ctx.createOscillator();
+        const gain1 = ctx.createGain();
+        osc1.type = 'sine';
+        osc1.frequency.setValueAtTime(659.25, now);
+        gain1.gain.setValueAtTime(0.18, now);
+        gain1.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        osc1.connect(gain1);
+        gain1.connect(ctx.destination);
+        osc1.start(now);
+        osc1.stop(now + 0.35);
+
+        // Nota 2 (Lá5)
+        const osc2 = ctx.createOscillator();
+        const gain2 = ctx.createGain();
+        osc2.type = 'sine';
+        osc2.frequency.setValueAtTime(880, now + 0.14);
+        gain2.gain.setValueAtTime(0.22, now + 0.14);
+        gain2.gain.exponentialRampToValueAtTime(0.001, now + 0.6);
+        osc2.connect(gain2);
+        gain2.connect(ctx.destination);
+        osc2.start(now + 0.14);
+        osc2.stop(now + 0.6);
+      } catch (e) {}
     }
 
     function urlBase64ToUint8Array(base64String) {
@@ -55,6 +57,11 @@
     async function iniciarPWA() {
       if ('serviceWorker' in navigator && 'PushManager' in window) {
         await navigator.serviceWorker.register('./sw.js');
+        navigator.serviceWorker.addEventListener('message', (event) => {
+          if (event.data && event.data.type === 'PUSH_RECEIVED') {
+            tocarCampainhaNotificacao();
+          }
+        });
         if (Notification.permission === 'default') {
           document.getElementById('btnNotify').style.display = 'block';
         } else if (Notification.permission === 'granted') {
@@ -64,13 +71,14 @@
     }
 
     async function ativarNotificacoes() {
+      tocarCampainhaNotificacao();
       const perm = await Notification.requestPermission();
       if (perm === 'granted') {
         document.getElementById('btnNotify').style.display = 'none';
         await registrarAssinatura();
-        alert('✅ Notificações ativadas neste aparelho!');
+        alert('✅ Notificações e alerta sonoro ativados neste aparelho!');
       } else {
-        alert('⚠️ Permissão bloqueada. Libere as notificações nas configurações do navegador.');
+        alert('⚠️ Permissão bloqueada. Libere as notificações nos Ajustes do aparelho.');
       }
     }
 
@@ -100,7 +108,6 @@
       }
     }
 
-    // Escuta o login e o logout feitos dentro do Apps Script para salvar/limpar no dispositivo
     window.addEventListener('message', (event) => {
       if (!event.data) return;
       if (event.data.type === 'AUTO_LOGIN') {
