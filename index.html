@@ -1106,7 +1106,14 @@
       const [editingService, setEditingService] = useState(null);
       const [toast, setToast] = useState('');
       const [detail, setDetail] = useState(null);
+      const [editingAppIndex, setEditingAppIndex] = useState(null);
       const [isSaving, setIsSaving] = useState(false);
+
+      useEffect(() => {
+        if (!toast) return;
+        const timer = setTimeout(() => setToast(''), 3500);
+        return () => clearTimeout(timer);
+      }, [toast]);
 
       const [blockModal, setBlockModal] = useState(false);
       const [blockType, setBlockType] = useState('full');
@@ -1169,7 +1176,6 @@
         tocarCampainhaNotificacao();
         if (!('Notification' in window)) {
           setToast('⚠️ Adicione o app à Tela de Início primeiro.');
-          setTimeout(() => setToast(''), 3500);
           return;
         }
         const perm = await Notification.requestPermission();
@@ -1180,7 +1186,6 @@
         } else {
           setToast('⚠️ Permissão negada nos Ajustes do celular.');
         }
-        setTimeout(() => setToast(''), 3500);
       };
 
       useEffect(() => {
@@ -1254,7 +1259,6 @@
         const targetDate = blockDate || appDate;
         if (targetDate < getTodayISO()) {
           setToast('⚠️ Escolha hoje ou uma data futura para bloquear.');
-          setTimeout(() => setToast(''), 3500);
           return;
         }
 
@@ -1283,7 +1287,6 @@
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao bloquear agenda.'));
         }
-        setTimeout(() => setToast(''), 3500);
       };
 
       const handleRemoveBlock = async (blockObj) => {
@@ -1304,7 +1307,6 @@
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao desbloquear.'));
         }
-        setTimeout(() => setToast(''), 3500);
       };
 
       const handleSelectLoginUser = (name) => {
@@ -1378,7 +1380,6 @@
 
         if (jaExiste) {
           setToast('⚠️ Cliente já cadastrado com este nome e número!');
-          setTimeout(() => setToast(''), 3000);
           return false;
         }
 
@@ -1386,11 +1387,9 @@
         if (res && res.sucesso) {
           if (res.clientes) setClientsList(res.clientes);
           setToast('Cliente cadastrado com sucesso!');
-          setTimeout(() => setToast(''), 3000);
           return true;
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao salvar cliente.'));
-          setTimeout(() => setToast(''), 3000);
           return false;
         }
       };
@@ -1405,11 +1404,9 @@
         if (res && res.sucesso) {
           if (res.clientes) setClientsList(res.clientes);
           setToast('Cliente atualizado com sucesso!');
-          setTimeout(() => setToast(''), 3000);
           return true;
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao editar cliente.'));
-          setTimeout(() => setToast(''), 3000);
           return false;
         }
       };
@@ -1423,7 +1420,6 @@
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao excluir cliente.'));
         }
-        setTimeout(() => setToast(''), 3000);
       };
 
       const formatWhatsappMessage = (template, app) => {
@@ -1460,7 +1456,6 @@
         setWppTemplate(newText);
         try { localStorage.setItem('espaco101_wpp_msg_template', newText); } catch(e) {}
         setToast('Mensagem padrão do WhatsApp salva!');
-        setTimeout(() => setToast(''), 3000);
       };
 
       const handleOpenUserModal = (u = null) => {
@@ -1489,7 +1484,6 @@
         setUsers(editingUser ? users.map(u => u.name === editingUser.name ? dados : u) : [...users, dados]);
         setUserModal(false);
         setToast('Profissional salva com sucesso!');
-        setTimeout(() => setToast(''), 3000);
       };
 
       const handleDeleteUser = async () => {
@@ -1499,7 +1493,6 @@
         setUsers(users.filter(u => u.name !== editingUser.name));
         setUserModal(false);
         setToast('Profissional removida!');
-        setTimeout(() => setToast(''), 3000);
       };
 
       const handleOpenServiceModal = (s = null) => {
@@ -1517,7 +1510,6 @@
         setServices(editingService ? services.map(s => s.name === editingService.name ? novo : s) : [...services, novo]);
         setServiceModal(false);
         setToast('Serviço salvo com sucesso!');
-        setTimeout(() => setToast(''), 3000);
       };
 
       const handleDeleteService = async () => {
@@ -1527,28 +1519,40 @@
         setServices(services.filter(s => s.name !== editingService.name));
         setServiceModal(false);
         setToast('Serviço removido.');
-        setTimeout(() => setToast(''), 3000);
+      };
+
+      const handleOpenEditAppointment = (index) => {
+        const item = appointments[index];
+        if (!item) return;
+        setEditingAppIndex(index);
+        setAppDate(item.date);
+        setTime(formatTime(item.time));
+        setClient(item.client || '');
+        setClientPhone(item.phone || '');
+        setService(item.service || (services[0] ? services[0].name : ''));
+        setProfessional(item.pro || agendaProfessional);
+        setShowClientSuggestions(false);
+        setDetail(null);
+        setModal(true);
       };
 
       const addAppointment = async () => {
         if (isSaving) return;
 
+        const isEditing = editingAppIndex !== null;
         const hojeISO = getTodayISO();
         const cleanStart = formatTime(time);
 
-        if (appDate < hojeISO) {
-          setToast('⚠️ Não é permitido agendar para datas que já passaram.');
-          setTimeout(() => setToast(''), 3500);
-          return;
-        }
-
-        if (appDate === hojeISO) {
-          const agora = new Date();
-          const agoraMin = agora.getHours() * 60 + agora.getMinutes();
-          if (timeToMinutes(cleanStart) < agoraMin) {
-            setToast('⚠️ Não é permitido agendar para um horário que já passou.');
-            setTimeout(() => setToast(''), 3500);
-            return;
+        if (!isEditing) {
+          if (appDate < hojeISO) {
+            return setToast('⚠️ Não é permitido agendar para datas que já passaram.');
+          }
+          if (appDate === hojeISO) {
+            const agora = new Date();
+            const agoraMin = agora.getHours() * 60 + agora.getMinutes();
+            if (timeToMinutes(cleanStart) < agoraMin) {
+              return setToast('⚠️ Não é permitido agendar para um horário que já passou.');
+            }
           }
         }
 
@@ -1575,7 +1579,8 @@
           }
         }
 
-        const conflito = appointments.find(item => {
+        const conflito = appointments.find((item, idx) => {
+          if (isEditing && idx === editingAppIndex) return false;
           if (item.date !== appDate || item.pro !== professional || item.status === 'cancelado') return false;
           return newStart < timeToMinutes(item.end) && newEnd > timeToMinutes(item.time);
         });
@@ -1584,30 +1589,43 @@
 
         setIsSaving(true);
 
+        const antigoItem = isEditing ? appointments[editingAppIndex] : null;
         const novoItem = {
-          date: appDate, time: cleanStart, end: cleanEnd,
+          date: appDate,
+          time: cleanStart,
+          end: cleanEnd,
           client: client.trim() || 'Cliente sem nome',
           phone: clientPhone.trim(),
           service: actualService,
-          pro: professional, price: precoServico, status: 'agendado'
+          pro: professional,
+          price: precoServico,
+          status: antigoItem ? antigoItem.status : 'agendado'
         };
 
-        const res = await callAPI('salvarAgendamento', { dados: novoItem });
+        const res = isEditing
+          ? await callAPI('editarAgendamento', { antigo: antigoItem, novo: novoItem })
+          : await callAPI('salvarAgendamento', { dados: novoItem });
+
         setIsSaving(false);
 
         if (res && res.sucesso) {
-          setAppointments(prev => [...prev, novoItem]);
+          if (isEditing) {
+            setAppointments(prev => prev.map((it, idx) => idx === editingAppIndex ? novoItem : it));
+            setToast('Agendamento atualizado com sucesso!');
+          } else {
+            setAppointments(prev => [...prev, novoItem]);
+            setToast('Horário agendado com sucesso!');
+          }
           if (res.clientes) setClientsList(res.clientes);
           setAgendaProfessional(professional);
+          setEditingAppIndex(null);
           setModal(false);
           setClient('');
           setClientPhone('');
           setShowClientSuggestions(false);
-          setToast('Horário agendado com sucesso!');
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao gravar na planilha.'));
         }
-        setTimeout(() => setToast(''), 3500);
       };
 
       const toggleAppointmentStatus = async (index) => {
@@ -1625,7 +1643,6 @@
         updated[index] = { ...item, status: novoStatus };
         setAppointments(updated);
         setToast(novoStatus === 'confirmado' ? 'Atendimento confirmado!' : 'Status revertido.');
-        setTimeout(() => setToast(''), 2500);
       };
 
       const cancelAppointment = async (indexToCancel) => {
@@ -1650,7 +1667,6 @@
         } else {
           setToast('⚠️ ' + (res?.erro || 'Erro ao sincronizar cancelamento.'));
         }
-        setTimeout(() => setToast(''), 3000);
       };
 
       const changeWeek = (offset) => {
@@ -1965,7 +1981,7 @@
 
                       <div className="divide-y divide-stone-100">
                         {professionalAppointments.map(({ item, index }) => (
-                          <button key={`${item.time}-${item.client}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-4 text-left transition hover:bg-[#fcf8f6]">
+                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-4 text-left transition hover:bg-[#fcf8f6]">
                             <div className="w-14 shrink-0 pt-1">
                               <p className="text-sm font-bold text-stone-800">{formatTime(item.time)}</p>
                               <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
@@ -2026,6 +2042,9 @@
               <button 
                 type="button" 
                 onClick={() => {
+                  setEditingAppIndex(null);
+                  setClient('');
+                  setClientPhone('');
                   setShowClientSuggestions(false);
                   if (appDate < getTodayISO()) setAppDate(getTodayISO());
                   setModal(true);
@@ -2234,13 +2253,13 @@
             </div>
           )}
 
-          {/* MODAL NOVO AGENDAMENTO */}
+          {/* MODAL NOVO / EDITAR AGENDAMENTO */}
           {modal && (
-            <div onMouseDown={() => setModal(false)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
+            <div onMouseDown={() => { setModal(false); setEditingAppIndex(null); }} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
                 <div className="flex items-start justify-between">
-                  <h2 className="font-serif text-2xl font-bold">Novo agendamento</h2>
-                  <button type="button" onClick={() => setModal(false)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
+                  <h2 className="font-serif text-2xl font-bold">{editingAppIndex !== null ? 'Editar agendamento' : 'Novo agendamento'}</h2>
+                  <button type="button" onClick={() => { setModal(false); setEditingAppIndex(null); }} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
                 </div>
                 <div className="mt-5 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
@@ -2287,7 +2306,13 @@
                   <div className="grid grid-cols-2 gap-3">
                     <label>
                       <span className="text-xs font-bold text-stone-600">Data</span>
-                      <input type="date" min={getTodayISO()} value={appDate < getTodayISO() ? getTodayISO() : appDate} onChange={e => setAppDate(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" />
+                      <input
+                        type="date"
+                        min={editingAppIndex !== null ? undefined : getTodayISO()}
+                        value={editingAppIndex !== null ? appDate : (appDate < getTodayISO() ? getTodayISO() : appDate)}
+                        onChange={e => setAppDate(e.target.value)}
+                        className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white"
+                      />
                     </label>
                     <label>
                       <span className="text-xs font-bold text-stone-600">Início</span>
@@ -2308,7 +2333,7 @@
                   className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white transition ${
                     isSaving ? 'bg-stone-400 cursor-not-allowed' : 'bg-[#6f424a] hover:bg-[#5b363d]'
                   }`}>
-                  {isSaving ? 'Agendando...' : 'Confirmar Agendamento'}
+                  {isSaving ? 'Salvando...' : (editingAppIndex !== null ? 'Salvar Alterações' : 'Confirmar Agendamento')}
                 </button>
               </div>
             </div>
@@ -2357,6 +2382,14 @@
                     </button>
                   </div>
 
+                  <button
+                    type="button"
+                    onClick={() => handleOpenEditAppointment(detail)}
+                    className="w-full rounded-xl border border-stone-300 bg-white py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center justify-center gap-2 transition">
+                    <Icon name="edit" size={16} />
+                    <span>Editar Agendamento</span>
+                  </button>
+
                   <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
                     {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
                   </button>
@@ -2367,7 +2400,7 @@
           )}
 
           {toast && (
-            <div className="fixed bottom-24 left-1/2 z-[80] -translate-x-1/2 whitespace-nowrap rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
+            <div className="fixed bottom-24 left-1/2 z-[80] -translate-x-1/2 max-w-[90vw] text-center rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
               {toast}
             </div>
           )}
