@@ -351,7 +351,7 @@
       const todayAppointmentsList = useMemo(() => {
         return appointments
           .filter(a => a.date === todayStr)
-          .sort((a, b) => a.time.localeCompare(b.time));
+          .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
       }, [appointments, todayStr]);
 
       const todayRevenueAppointments = useMemo(() => {
@@ -361,13 +361,13 @@
       const futureAppointments = useMemo(() => {
         return appointments
           .filter(a => a.date >= todayStr && (selectedClientPro === 'Todos' || a.pro === selectedClientPro))
-          .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+          .sort((a, b) => a.date.localeCompare(b.date) || (timeToMinutes(a.time) - timeToMinutes(b.time)));
       }, [appointments, selectedClientPro, todayStr]);
 
       const pastAppointments = useMemo(() => {
         return appointments
           .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro))
-          .sort((a, b) => b.date.localeCompare(a.date) || b.time.localeCompare(a.time));
+          .sort((a, b) => b.date.localeCompare(a.date) || (timeToMinutes(b.time) - timeToMinutes(a.time)));
       }, [appointments, selectedHistPro, todayStr]);
 
       const filteredAppointments = useMemo(() => {
@@ -1677,7 +1677,10 @@
       };
 
       const weekDays = useMemo(() => getWeekDays(appDate), [appDate]);
-      const professionalAppointments = appointments.map((item, index) => ({ item, index })).filter(({ item }) => item.pro === agendaProfessional && item.date === appDate);
+      const professionalAppointments = appointments
+        .map((item, index) => ({ item, index }))
+        .filter(({ item }) => item.pro === agendaProfessional && item.date === appDate)
+        .sort((a, b) => timeToMinutes(a.item.time) - timeToMinutes(b.item.time));
 
       const menuItems = [
         ['Início', 'home'],
