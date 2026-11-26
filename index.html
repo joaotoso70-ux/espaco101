@@ -2382,6 +2382,10 @@
                     </button>
                   </div>
 
+                  <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
+                    {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
+                  </button>
+
                   <button
                     type="button"
                     onClick={() => handleOpenEditAppointment(detail)}
@@ -2390,9 +2394,6 @@
                     <span>Editar Agendamento</span>
                   </button>
 
-                  <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
-                    {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
-                  </button>
                   <button type="button" onClick={() => cancelAppointment(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Cancelar Horário</button>
                 </div>
               </div>
