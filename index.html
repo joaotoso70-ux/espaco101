@@ -318,7 +318,7 @@
       tab, isAdmin, currentUser, users, allUsers, services, appointments, clientsList,
       onSaveClient, onEditClient, onDeleteClient,
       wppTemplate, onSaveWppTemplateDirect, formatWhatsappMessage,
-      onOpenUserModal, onEditUser, onOpenServiceModal, onEditService, onSelectAppointment, blockedDays 
+      onOpenUserModal, onEditUser, onOpenServiceModal, onEditService, onSelectAppointment 
     }) {
       const [clientSubTab, setClientSubTab] = useState('agendadas');
       const [selectedClientPro, setSelectedClientPro] = useState('Todos');
@@ -343,7 +343,6 @@
 
       const [localWppText, setLocalWppText] = useState(wppTemplate);
 
-      // Novos filtros de busca e data para a aba Clientes
       const [clientFltName, setClientFltName] = useState('');
       const [clientFltDate, setClientFltDate] = useState('');
 
@@ -385,7 +384,7 @@
       const pastAppointments = useMemo(() => {
         return appointments
           .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro) && matchFiltrosClientes(a))
-          .sort((a, b) => b.date.localeCompare(a.date) || (timeToMinutes(b.time) - timeToMinutes(a.time)));
+          .sort((a, b) => a.date.localeCompare(b.date) || (timeToMinutes(a.time) - timeToMinutes(b.time)));
       }, [appointments, selectedHistPro, todayStr, clientFltName, clientFltDate]);
 
       const filteredAppointments = useMemo(() => {
@@ -520,7 +519,7 @@
                         </div>
                         <div className="text-right shrink-0">
                           <span className="block text-xs font-bold text-[#6f424a]">{formatTime(item.time)}</span>
-                          <span className={`text-[9px] uppercase font-bold px-2.5 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          <span className={`whitespace-nowrap text-[9px] uppercase font-bold px-2.5 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                             {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
                           </span>
                         </div>
@@ -734,19 +733,18 @@
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Gestão de Clientes</p>
-                <h1 className="mt-1 font-serif text-3xl font-bold">{clientSubTab === 'agendadas' ? '📅 Clientes Agendadas' : '⏳ Clientes Atendidas'}</h1>
+                <h1 className="mt-1 font-serif text-3xl font-bold">{clientSubTab === 'agendadas' ? 'Clientes Agendadas' : 'Clientes Atendidas'}</h1>
               </div>
               <div className="inline-flex rounded-2xl bg-stone-200/80 p-1 self-start sm:self-auto shadow-inner border border-stone-300/40">
-                <button type="button" onClick={() => setClientSubTab('agendadas')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
-                  📅 Clientes Agendadas
+                <button type="button" onClick={() => setClientSubTab('agendadas')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
+                  <Icon name="calendar" size={15}/> Clientes Agendadas
                 </button>
-                <button type="button" onClick={() => setClientSubTab('atendidos')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
-                  ⏳ Clientes Atendidas
+                <button type="button" onClick={() => setClientSubTab('atendidos')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
+                  <Icon name="history" size={15}/> Clientes Atendidas
                 </button>
               </div>
             </div>
 
-            {/* SELETOR DE PROFISSIONAIS (HORIZONTAL SLIDER) */}
             <div className="flex gap-1.5 overflow-x-auto pb-2.5 [scrollbar-width:none]">
               <button 
                 type="button" 
@@ -781,48 +779,62 @@
               })}
             </div>
 
-            {/* BARRA DE FILTROS (LADO A LADO) */}
-            <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-white/70 border border-stone-200/50 p-2.5 rounded-2xl">
-              <div className="flex-1 relative">
+            <div className="flex items-center gap-2 mb-4 bg-white/70 border border-stone-200/50 p-2 rounded-2xl">
+              <div className="flex-1 min-w-0">
                 <input 
                   type="text" 
                   value={clientFltName} 
                   onChange={e => setClientFltName(e.target.value)} 
-                  placeholder="🔍 Buscar cliente por nome ou WhatsApp..." 
+                  placeholder="🔍 Buscar cliente por nome..." 
                   className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-[#9d6269]"
                 />
               </div>
-              <div className="sm:w-44 flex items-center gap-1.5 shrink-0">
-                <input 
-                  type="date" 
-                  value={clientFltDate} 
-                  onChange={e => setClientFltDate(e.target.value)} 
-                  className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-[#9d6269]"
-                />
-                {(clientFltName || clientFltDate) && (
-                  <button 
-                    type="button" 
-                    onClick={() => { setClientFltName(''); setClientFltDate(''); }}
-                    className="rounded-xl border border-stone-300 bg-stone-100 px-3 py-2 text-xs font-bold text-stone-600 hover:bg-stone-200 whitespace-nowrap transition">
-                    Limpar
-                  </button>
+
+              <label
+                title="Filtrar por data"
+                className={`relative flex items-center justify-center gap-1.5 h-9 px-3 rounded-xl border cursor-pointer shrink-0 transition ${
+                  clientFltDate
+                    ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a]'
+                    : 'border-stone-200 bg-white text-stone-600 hover:bg-stone-50'
+                }`}>
+                <Icon name="calendar" size={16} />
+                {clientFltDate && (
+                  <span className="text-xs font-bold whitespace-nowrap">
+                    {clientFltDate.split('-').reverse().slice(0, 2).join('/')}
+                  </span>
                 )}
-              </div>
+                <input
+                  type="date"
+                  value={clientFltDate}
+                  onChange={e => setClientFltDate(e.target.value)}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                />
+              </label>
+
+              {(clientFltName || clientFltDate) && (
+                <button 
+                  type="button" 
+                  onClick={() => { setClientFltName(''); setClientFltDate(''); }}
+                  className="h-9 rounded-xl border border-stone-200 bg-stone-100 px-3 text-xs font-bold text-stone-600 hover:bg-stone-200 whitespace-nowrap shrink-0 transition">
+                  Limpar
+                </button>
+              )}
             </div>
 
             {clientSubTab === 'agendadas' ? (
               <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm divide-y divide-stone-100">
                 {futureAppointments.map(item => (
-                  <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-center justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-rose-100 text-xs font-bold text-rose-700">{String(item.client).slice(0, 2).toUpperCase()}</span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
-                        <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
-                        <p className="text-[11px] font-semibold text-[#6f424a] mt-0.5">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · 👤 {item.pro}</p>
+                  <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-start justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-rose-100 text-xs font-bold text-rose-700 mt-0.5">{String(item.client).slice(0, 2).toUpperCase()}</span>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
+                        <p className="text-xs font-semibold text-[#6f424a]">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)}</p>
+                        <p className="text-xs text-stone-600 leading-snug">{item.service} · {formatCurrency(item.price)}</p>
+                        <p className="text-[11px] text-stone-400">👤 {item.pro}</p>
                       </div>
                     </div>
-                    <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                    <span className={`whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                       {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                     </span>
                   </div>
@@ -832,16 +844,19 @@
             ) : (
               <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm divide-y divide-stone-100">
                 {pastAppointments.map(item => (
-                  <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-center justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-stone-100 text-xs font-bold text-stone-700">{String(item.client).slice(0, 2).toUpperCase()}</span>
-                      <div className="min-w-0">
-                        <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
-                        <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
-                        <p className="text-[11px] text-stone-400 mt-0.5">Em {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · 👤 {item.pro}</p>
+                  <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-start justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-stone-100 text-xs font-bold text-stone-700 mt-0.5">{String(item.client).slice(0, 2).toUpperCase()}</span>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
+                        <p className="text-xs font-semibold text-stone-600">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)}</p>
+                        <p className="text-xs text-stone-500 leading-snug">{item.service} · {formatCurrency(item.price)}</p>
+                        <p className="text-[11px] text-stone-400">👤 {item.pro}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">✓ Concluído</span>
+                    <span className="whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">
+                      ✓ Concluído
+                    </span>
                   </div>
                 ))}
                 {pastAppointments.length === 0 && <div className="p-12 text-center text-stone-400">Nenhum atendimento anterior encontrado.</div>}
@@ -1402,7 +1417,6 @@
         if (creds[loginUser]) setPassword(creds[loginUser]);
       };
 
-      // --- CRUD CLIENTES ---
       const handleSaveManualClient = async (name, phone) => {
         const nomeNorm = String(name || '').trim().replace(/\s+/g, ' ').toLowerCase();
         const telNorm = String(phone || '').replace(/\D/g, '');
@@ -1910,13 +1924,10 @@
               <div className="w-full max-w-5xl mx-auto">
                 {tab === 'Agenda' ? (
                   <div className="w-full px-4 py-6 md:px-8">
-                    {/* BARRA DE MÊS E NAVEGAÇÃO SUPER COMPACTA */}
                     <section className="mb-4 flex items-center justify-between">
-                      <div>
-                        <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-800">
-                          {new Date(appDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
-                        </h1>
-                      </div>
+                      <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-800">
+                        {new Date(appDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                      </h1>
                       
                       <div className="flex items-center gap-1.5">
                         <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
@@ -1934,7 +1945,6 @@
                       </div>
                     </section>
 
-                    {/* CALENDÁRIO VISÍVEL COM TODOS OS 7 DIAS (SEG A DOM) */}
                     <section className="mb-4 bg-white/70 border border-stone-200/40 rounded-3xl p-2.5">
                       <div className="grid grid-cols-7 gap-1">
                         {weekDays.map(day => {
@@ -1964,7 +1974,6 @@
                       </div>
                     </section>
 
-                    {/* SELETOR DE PROFISSIONAIS SLIDER COMPACTO */}
                     <section className="mb-4">
                       <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
                         {teamUsers.map(person => (
@@ -1986,7 +1995,6 @@
                       </div>
                     </section>
 
-                    {/* LISTAGEM DE HORÁRIOS */}
                     <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
                       <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between gap-3">
                         <div>
@@ -2046,19 +2054,19 @@
 
                       <div className="divide-y divide-stone-100">
                         {professionalAppointments.map(({ item, index }) => (
-                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-[#fcf8f6]">
+                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full items-stretch gap-3 px-4 py-3.5 text-left transition hover:bg-[#fcf8f6]">
                             <div className="w-12 shrink-0 pt-0.5">
                               <p className="text-[13.5px] font-bold text-stone-800">{formatTime(item.time)}</p>
                               <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
                             </div>
-                            <div className={`w-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
-                            <div className="flex min-w-0 flex-1 items-center gap-3">
-                              <div className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{String(item.client).slice(0, 2).toUpperCase()}</div>
-                              <div className="min-w-0 flex-1">
-                                <p className="truncate text-sm font-bold text-stone-800">{item.client}</p>
-                                <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
+                            <div className={`w-1 shrink-0 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                            <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                              <div className="min-w-0 flex-1 space-y-0.5">
+                                <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
+                                <p className="text-xs text-stone-500 leading-snug">{item.service}</p>
+                                <p className="text-[11px] font-semibold text-[#6f424a]">{formatCurrency(item.price)}</p>
                               </div>
-                              <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                              <span className={`whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
                                 {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                               </span>
                             </div>
@@ -2070,7 +2078,7 @@
                             <p className="text-xs text-stone-400 mt-1">
                               {hasFullDayBlock 
                                 ? 'Desbloqueie acima para aceitar clientes.' 
-                                : `Não há atendimentos para ${agendaProfessional} hoje.`}
+                                : `Não há atendimentos para ${agendaProfessional} nesta data.`}
                             </p>
                           </div>
                         )}
@@ -2098,7 +2106,6 @@
                     onOpenServiceModal={handleOpenServiceModal} 
                     onEditService={handleOpenServiceModal} 
                     onSelectAppointment={idx => setDetail(idx)} 
-                    blockedDays={blockedDays}
                   />
                 )}
               </div>
@@ -2122,7 +2129,6 @@
             )}
           </div>
 
-          {/* MODAL BLOQUEAR DIA INTEIRO OU HORÁRIO ESPECÍFICO */}
           {blockModal && (
             <div onMouseDown={() => setBlockModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
@@ -2220,7 +2226,6 @@
             </div>
           )}
 
-          {/* MODAL SERVIÇOS */}
           {serviceModal && (
             <div onMouseDown={() => setServiceModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
@@ -2254,7 +2259,6 @@
             </div>
           )}
 
-          {/* MODAL PROFISSIONAIS */}
           {userModal && (
             <div onMouseDown={() => setUserModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100 max-h-[90vh] overflow-y-auto">
@@ -2300,7 +2304,6 @@
             </div>
           )}
 
-          {/* MODAL DATA */}
           {dateModal && (
             <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
               <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
@@ -2319,7 +2322,6 @@
             </div>
           )}
 
-          {/* MODAL NOVO / EDITAR AGENDAMENTO */}
           {modal && (
             <div onMouseDown={() => { setModal(false); setEditingAppIndex(null); }} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
@@ -2405,13 +2407,12 @@
             </div>
           )}
 
-          {/* MODAL DETALHES */}
           {detail !== null && appointments[detail] && (
             <div onMouseDown={() => setDetail(null)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem]">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                    <span className={`whitespace-nowrap text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                       {appointments[detail].status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                     </span>
                     <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
