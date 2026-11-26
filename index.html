@@ -318,7 +318,7 @@
       tab, isAdmin, currentUser, users, allUsers, services, appointments, clientsList,
       onSaveClient, onEditClient, onDeleteClient,
       wppTemplate, onSaveWppTemplateDirect, formatWhatsappMessage,
-      onOpenUserModal, onEditUser, onOpenServiceModal, onEditService, onSelectAppointment 
+      onOpenUserModal, onEditUser, onOpenServiceModal, onEditService, onSelectAppointment, blockedDays 
     }) {
       const [clientSubTab, setClientSubTab] = useState('agendadas');
       const [selectedClientPro, setSelectedClientPro] = useState('Todos');
@@ -343,11 +343,16 @@
 
       const [localWppText, setLocalWppText] = useState(wppTemplate);
 
+      // Novos filtros de busca e data para a aba Clientes
+      const [clientFltName, setClientFltName] = useState('');
+      const [clientFltDate, setClientFltDate] = useState('');
+
       useEffect(() => { setLocalWppText(wppTemplate); }, [wppTemplate]);
       useEffect(() => { if (!isAdmin) setSelectedPro(currentUser); }, [isAdmin, currentUser]);
       const effectivePro = isAdmin ? selectedPro : currentUser;
 
       const todayStr = getTodayISO();
+      
       const todayAppointmentsList = useMemo(() => {
         return appointments
           .filter(a => a.date === todayStr)
@@ -358,17 +363,30 @@
         return todayAppointmentsList.filter(a => isAdmin || a.pro === currentUser);
       }, [todayAppointmentsList, isAdmin, currentUser]);
 
+      const matchFiltrosClientes = (app) => {
+        if (clientFltName.trim()) {
+          const termo = clientFltName.toLowerCase();
+          const nomeMatch = String(app.client || '').toLowerCase().includes(termo);
+          const telMatch = String(app.phone || '').includes(termo);
+          if (!nomeMatch && !telMatch) return false;
+        }
+        if (clientFltDate) {
+          if (app.date !== clientFltDate) return false;
+        }
+        return true;
+      };
+
       const futureAppointments = useMemo(() => {
         return appointments
-          .filter(a => a.date >= todayStr && (selectedClientPro === 'Todos' || a.pro === selectedClientPro))
+          .filter(a => a.date >= todayStr && (selectedClientPro === 'Todos' || a.pro === selectedClientPro) && matchFiltrosClientes(a))
           .sort((a, b) => a.date.localeCompare(b.date) || (timeToMinutes(a.time) - timeToMinutes(b.time)));
-      }, [appointments, selectedClientPro, todayStr]);
+      }, [appointments, selectedClientPro, todayStr, clientFltName, clientFltDate]);
 
       const pastAppointments = useMemo(() => {
         return appointments
-          .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro))
+          .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro) && matchFiltrosClientes(a))
           .sort((a, b) => b.date.localeCompare(a.date) || (timeToMinutes(b.time) - timeToMinutes(a.time)));
-      }, [appointments, selectedHistPro, todayStr]);
+      }, [appointments, selectedHistPro, todayStr, clientFltName, clientFltDate]);
 
       const filteredAppointments = useMemo(() => {
         const today = new Date();
@@ -502,7 +520,7 @@
                         </div>
                         <div className="text-right shrink-0">
                           <span className="block text-xs font-bold text-[#6f424a]">{formatTime(item.time)}</span>
-                          <span className={`text-[9px] uppercase font-bold px-2 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                          <span className={`text-[9px] uppercase font-bold px-2.5 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
                             {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
                           </span>
                         </div>
@@ -713,39 +731,32 @@
       if (tab === 'Clientes') {
         return (
           <div className="w-full px-4 py-6 md:px-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Gestão de Clientes</p>
-                <h1 className="mt-1 font-serif text-3xl font-bold">{clientSubTab === 'agendadas' ? 'Clientes Agendadas' : 'Clientes Atendidas'}</h1>
+                <h1 className="mt-1 font-serif text-3xl font-bold">{clientSubTab === 'agendadas' ? '📅 Clientes Agendadas' : '⏳ Clientes Atendidas'}</h1>
               </div>
-              <div className="inline-flex rounded-2xl bg-stone-200/80 p-1.5 self-start sm:self-auto shadow-inner">
-                <button type="button" onClick={() => setClientSubTab('agendadas')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}>
-                  <Icon name="calendar" size={16}/> Clientes Agendadas
+              <div className="inline-flex rounded-2xl bg-stone-200/80 p-1 self-start sm:self-auto shadow-inner border border-stone-300/40">
+                <button type="button" onClick={() => setClientSubTab('agendadas')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
+                  📅 Clientes Agendadas
                 </button>
-                <button type="button" onClick={() => setClientSubTab('atendidos')} className={`flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-sm' : 'text-stone-600 hover:text-stone-900'}`}>
-                  <Icon name="history" size={16}/> Clientes Atendidas
+                <button type="button" onClick={() => setClientSubTab('atendidos')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
+                  ⏳ Clientes Atendidas
                 </button>
               </div>
             </div>
 
-            <div className="flex flex-wrap gap-2 mb-6">
+            {/* SELETOR DE PROFISSIONAIS (HORIZONTAL SLIDER) */}
+            <div className="flex gap-1.5 overflow-x-auto pb-2.5 [scrollbar-width:none]">
               <button 
                 type="button" 
                 onClick={() => clientSubTab === 'agendadas' ? setSelectedClientPro('Todos') : setSelectedHistPro('Todos')} 
-                className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition ${
+                className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
                   (clientSubTab === 'agendadas' ? selectedClientPro : selectedHistPro) === 'Todos' 
-                    ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' 
-                    : 'border-stone-200 bg-white/70 hover:bg-white'
+                    ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a]' 
+                    : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
                 }`}>
-                <span className="grid w-8 h-8 place-items-center rounded-full bg-stone-200 text-xs font-bold text-stone-700">★</span>
-                <div>
-                  <span className="block text-xs font-bold text-stone-800">Todos</span>
-                  <span className="block text-[10px] text-stone-400">
-                    {clientSubTab === 'agendadas' 
-                      ? appointments.filter(a => a.date >= todayStr).length + ' futuro(s)'
-                      : appointments.filter(a => a.date < todayStr).length + ' atendido(s)'}
-                  </span>
-                </div>
+                ★ Todos
               </button>
 
               {users.map(u => {
@@ -759,21 +770,44 @@
                     key={u.name} 
                     type="button" 
                     onClick={() => clientSubTab === 'agendadas' ? setSelectedClientPro(u.name) : setSelectedHistPro(u.name)} 
-                    className={`flex items-center gap-2.5 rounded-2xl border px-3 py-2 text-left transition ${
+                    className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
                       isSelected 
-                        ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' 
-                        : 'border-stone-200 bg-white/70 hover:bg-white'
+                        ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a]' 
+                        : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
                     }`}>
-                    <span className="grid w-8 h-8 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{(u.name || 'P')[0]}</span>
-                    <div>
-                      <span className="block text-xs font-bold text-stone-800">{u.name}</span>
-                      <span className="block text-[10px] text-stone-400">
-                        {count} {clientSubTab === 'agendadas' ? 'futuro(s)' : 'atendido(s)'}
-                      </span>
-                    </div>
+                    {(u.name || 'P')[0]} {u.name} <span className="opacity-60 font-normal">({count})</span>
                   </button>
                 );
               })}
+            </div>
+
+            {/* BARRA DE FILTROS (LADO A LADO) */}
+            <div className="flex flex-col sm:flex-row gap-2 mb-4 bg-white/70 border border-stone-200/50 p-2.5 rounded-2xl">
+              <div className="flex-1 relative">
+                <input 
+                  type="text" 
+                  value={clientFltName} 
+                  onChange={e => setClientFltName(e.target.value)} 
+                  placeholder="🔍 Buscar cliente por nome ou WhatsApp..." 
+                  className="w-full rounded-xl border border-stone-200 bg-white px-3.5 py-2 text-xs outline-none focus:border-[#9d6269]"
+                />
+              </div>
+              <div className="sm:w-44 flex items-center gap-1.5 shrink-0">
+                <input 
+                  type="date" 
+                  value={clientFltDate} 
+                  onChange={e => setClientFltDate(e.target.value)} 
+                  className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-xs font-semibold outline-none focus:border-[#9d6269]"
+                />
+                {(clientFltName || clientFltDate) && (
+                  <button 
+                    type="button" 
+                    onClick={() => { setClientFltName(''); setClientFltDate(''); }}
+                    className="rounded-xl border border-stone-300 bg-stone-100 px-3 py-2 text-xs font-bold text-stone-600 hover:bg-stone-200 whitespace-nowrap transition">
+                    Limpar
+                  </button>
+                )}
+              </div>
             </div>
 
             {clientSubTab === 'agendadas' ? (
@@ -785,11 +819,11 @@
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
                         <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
-                        <p className="text-[11px] font-semibold text-[#6f424a] mt-0.5">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · {item.pro}</p>
+                        <p className="text-[11px] font-semibold text-[#6f424a] mt-0.5">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · 👤 {item.pro}</p>
                       </div>
                     </div>
                     <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                      {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                      {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                     </span>
                   </div>
                 ))}
@@ -804,10 +838,10 @@
                       <div className="min-w-0">
                         <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
                         <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
-                        <p className="text-[11px] text-stone-400 mt-0.5">Em {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · {item.pro}</p>
+                        <p className="text-[11px] text-stone-400 mt-0.5">Em {item.date.split('-').reverse().join('/')} às {formatTime(item.time)} · 👤 {item.pro}</p>
                       </div>
                     </div>
-                    <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">Concluído</span>
+                    <span className="text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-stone-100 text-stone-600">✓ Concluído</span>
                   </div>
                 ))}
                 {pastAppointments.length === 0 && <div className="p-12 text-center text-stone-400">Nenhum atendimento anterior encontrado.</div>}
@@ -1876,64 +1910,92 @@
               <div className="w-full max-w-5xl mx-auto">
                 {tab === 'Agenda' ? (
                   <div className="w-full px-4 py-6 md:px-8">
-                    <section className="mb-6 flex items-end justify-between">
+                    {/* BARRA DE MÊS E NAVEGAÇÃO SUPER COMPACTA */}
+                    <section className="mb-4 flex items-center justify-between">
                       <div>
-                        <p className="text-sm text-stone-500">Visão da agenda</p>
-                        <h1 className="mt-1 font-serif text-3xl font-bold tracking-tight md:text-4xl">Horários marcados</h1>
+                        <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-800">
+                          {new Date(appDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
+                        </h1>
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5">
+                        <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
+                          <Icon name="chevronLeft" size={15} />
+                        </button>
+                        
+                        <button type="button" onClick={() => setDateModal(true)} className="flex items-center gap-1 h-9 px-3.5 rounded-xl border border-stone-200/80 bg-white text-xs font-bold text-stone-700 hover:bg-stone-50 active:scale-95 transition">
+                          <Icon name="calendar" size={14} />
+                          <span>{appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}</span>
+                        </button>
+
+                        <button type="button" onClick={() => changeWeek(7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
+                          <Icon name="chevron" size={15} />
+                        </button>
                       </div>
                     </section>
 
-                    <section className="mb-6 flex items-center gap-2 w-full overflow-hidden">
-                      <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm">
-                        <Icon name="chevronLeft" size={18} />
-                      </button>
-
-                      <div className="flex-1 min-w-0 overflow-x-auto pb-1 [scrollbar-width:none]">
-                        <div className="flex min-w-max gap-2">
-                          {weekDays.map(day => (
-                            <button key={day.fullDate} type="button" onClick={() => setAppDate(day.fullDate)} className={`flex w-14 flex-col items-center rounded-2xl py-3 transition md:w-16 ${day.active ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/10' : 'bg-white text-stone-500 hover:bg-rose-50'}`}>
-                              <span className={`text-[10px] font-bold ${day.active ? 'text-white/60' : 'text-stone-400'}`}>{day.week}</span>
-                              <span className="mt-1 text-lg font-bold">{day.date}</span>
-                              {day.active && <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#f2c4bb]"></span>}
+                    {/* CALENDÁRIO VISÍVEL COM TODOS OS 7 DIAS (SEG A DOM) */}
+                    <section className="mb-4 bg-white/70 border border-stone-200/40 rounded-3xl p-2.5">
+                      <div className="grid grid-cols-7 gap-1">
+                        {weekDays.map(day => {
+                          const temAtendimentoNoDia = appointments.some(a => a.date === day.fullDate && a.pro === agendaProfessional && a.status !== 'cancelado');
+                          return (
+                            <button 
+                              key={day.fullDate} 
+                              type="button" 
+                              onClick={() => setAppDate(day.fullDate)} 
+                              className={`flex flex-col items-center justify-center rounded-2xl py-2.5 transition relative ${
+                                day.active 
+                                  ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/15' 
+                                  : 'hover:bg-rose-50/50 text-stone-600'
+                              }`}>
+                              <span className={`text-[8.5px] font-bold tracking-wider uppercase ${day.active ? 'text-white/70' : 'text-stone-400'}`}>
+                                {day.week}
+                              </span>
+                              <span className="mt-0.5 text-[15px] font-bold leading-tight">
+                                {day.date}
+                              </span>
+                              {temAtendimentoNoDia && (
+                                <span className={`absolute bottom-1 w-1 h-1 rounded-full ${day.active ? 'bg-[#f2c4bb]' : 'bg-[#9d6269]'}`} />
+                              )}
                             </button>
-                          ))}
-                        </div>
+                          );
+                        })}
                       </div>
-
-                      <button type="button" onClick={() => changeWeek(7)} className="grid w-9 h-14 place-items-center rounded-2xl bg-white border border-stone-200/70 text-stone-500 hover:bg-rose-50 transition shrink-0 shadow-sm">
-                        <Icon name="chevron" size={18} />
-                      </button>
-
-                      <button type="button" onClick={() => setDateModal(true)} className="flex items-center gap-2 h-14 px-3 sm:px-4 rounded-2xl bg-white border border-stone-200/80 text-stone-700 hover:bg-stone-50 transition shrink-0 shadow-sm">
-                        <Icon name="calendar" size={18} />
-                        <span className="text-xs font-bold text-stone-700">{appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}</span>
-                      </button>
                     </section>
 
-                    <section className="mb-5 w-full">
-                      <div className="mb-2.5 flex items-center justify-between">
-                        <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Agendas da Equipe</p>
-                        <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#7c4851]">Visão compartilhada</span>
-                      </div>
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 w-full">
+                    {/* SELETOR DE PROFISSIONAIS SLIDER COMPACTO */}
+                    <section className="mb-4">
+                      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
                         {teamUsers.map(person => (
-                          <button key={person.name} type="button" onClick={() => { setAgendaProfessional(person.name); setProfessional(person.name); }} className={`flex min-w-0 items-center gap-2.5 rounded-2xl border p-2.5 text-left transition ${agendaProfessional === person.name ? 'border-[#9d6269] bg-white shadow-sm ring-1 ring-[#9d6269]' : 'border-stone-200 bg-white/70 hover:bg-white'}`}>
-                            <span className="grid w-8 h-8 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{(person.name || 'P')[0]}</span>
-                            <div className="min-w-0 flex-1">
-                              <span className="block truncate text-xs font-bold">{person.name}</span>
-                              <span className="block truncate text-[10px] text-stone-400">{person.role}</span>
-                            </div>
-                            {agendaProfessional === person.name && <span className="w-2 h-2 rounded-full bg-[#9d6269] shrink-0"></span>}
+                          <button 
+                            key={person.name} 
+                            type="button" 
+                            onClick={() => { setAgendaProfessional(person.name); setProfessional(person.name); }} 
+                            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-left transition ${
+                              agendaProfessional === person.name 
+                                ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a] ring-1 ring-[#9d6269]/40' 
+                                : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
+                            }`}>
+                            <span className="grid w-5 h-5 shrink-0 place-items-center rounded-full bg-[#faf0ed] text-[9.5px] font-bold text-[#6f424a]">
+                              {(person.name || 'P')[0]}
+                            </span>
+                            <span className="text-xs font-bold">{person.name}</span>
                           </button>
                         ))}
                       </div>
                     </section>
 
+                    {/* LISTAGEM DE HORÁRIOS */}
                     <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
-                      <div className="border-b border-stone-100 px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between gap-3">
                         <div>
-                          <h2 className="font-serif text-lg font-bold">Agenda de {agendaProfessional}</h2>
-                          <p className="text-xs text-stone-400">{professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().join('/')}</p>
+                          <h2 className="font-serif text-[17px] font-bold text-stone-800">
+                            Agenda de {agendaProfessional}
+                          </h2>
+                          <p className="text-xs text-stone-400">
+                            {professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().slice(0, 2).join('/')}
+                          </p>
                         </div>
 
                         {canManageBlock && (
@@ -1945,9 +2007,9 @@
                               setBlockReason('Folga / Compromisso'); 
                               setBlockModal(true); 
                             }}
-                            className="flex items-center justify-center gap-1.5 rounded-xl bg-red-50 border border-red-200 px-3.5 py-2 text-xs font-bold text-red-700 hover:bg-red-100 transition self-start sm:self-auto">
+                            className="grid w-8 h-8 place-items-center rounded-xl bg-red-50 border border-red-100 text-red-700 hover:bg-red-100 transition shrink-0"
+                            title="Bloquear Dia ou Horário">
                             <Icon name="lock" size={14} />
-                            <span>Bloquear Dia / Horário</span>
                           </button>
                         )}
                       </div>
@@ -1972,9 +2034,9 @@
                                   type="button"
                                   disabled={isTogglingBlock}
                                   onClick={() => handleRemoveBlock(bl)}
-                                  className="flex items-center gap-1 rounded-xl bg-white border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-emerald-700 hover:bg-emerald-50 transition shrink-0">
+                                  className="flex items-center gap-1 rounded-xl bg-white border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-[#6f424a] hover:bg-rose-50 transition shrink-0">
                                   <Icon name="unlock" size={13} />
-                                  <span>Desbloquear</span>
+                                  <span>Liberar</span>
                                 </button>
                               )}
                             </div>
@@ -1984,31 +2046,31 @@
 
                       <div className="divide-y divide-stone-100">
                         {professionalAppointments.map(({ item, index }) => (
-                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-4 text-left transition hover:bg-[#fcf8f6]">
-                            <div className="w-14 shrink-0 pt-1">
-                              <p className="text-sm font-bold text-stone-800">{formatTime(item.time)}</p>
+                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full gap-3 px-4 py-3.5 text-left transition hover:bg-[#fcf8f6]">
+                            <div className="w-12 shrink-0 pt-0.5">
+                              <p className="text-[13.5px] font-bold text-stone-800">{formatTime(item.time)}</p>
                               <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
                             </div>
                             <div className={`w-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
                             <div className="flex min-w-0 flex-1 items-center gap-3">
-                              <div className="grid w-10 h-10 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{String(item.client).slice(0, 2).toUpperCase()}</div>
+                              <div className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">{String(item.client).slice(0, 2).toUpperCase()}</div>
                               <div className="min-w-0 flex-1">
                                 <p className="truncate text-sm font-bold text-stone-800">{item.client}</p>
                                 <p className="text-xs text-stone-500 truncate">{item.service} · {formatCurrency(item.price)}</p>
                               </div>
                               <span className={`text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                                {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                                {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                               </span>
                             </div>
                           </button>
                         ))}
                         {professionalAppointments.length === 0 && (
                           <div className="px-5 py-16 text-center text-stone-400">
-                            <p className="font-bold text-stone-700">{hasFullDayBlock ? 'Agenda fechada nesta data' : 'Nenhum horário marcado'}</p>
+                            <p className="font-bold text-stone-700">{hasFullDayBlock ? '🔒 Agenda fechada nesta data' : '🗓️ Nenhum horário marcado'}</p>
                             <p className="text-xs text-stone-400 mt-1">
                               {hasFullDayBlock 
-                                ? 'Desbloqueie acima caso queira liberar agendamentos.' 
-                                : `${agendaProfessional} está com a agenda livre nesta data.`}
+                                ? 'Desbloqueie acima para aceitar clientes.' 
+                                : `Não há atendimentos para ${agendaProfessional} hoje.`}
                             </p>
                           </div>
                         )}
@@ -2036,6 +2098,7 @@
                     onOpenServiceModal={handleOpenServiceModal} 
                     onEditService={handleOpenServiceModal} 
                     onSelectAppointment={idx => setDetail(idx)} 
+                    blockedDays={blockedDays}
                   />
                 )}
               </div>
@@ -2091,7 +2154,7 @@
                     />
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1.5">
+                  <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1.5 font-sans">
                     <button
                       type="button"
                       onClick={() => setBlockType('full')}
@@ -2264,7 +2327,7 @@
                   <h2 className="font-serif text-2xl font-bold">{editingAppIndex !== null ? 'Editar agendamento' : 'Novo agendamento'}</h2>
                   <button type="button" onClick={() => { setModal(false); setEditingAppIndex(null); }} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
                 </div>
-                <div className="mt-5 space-y-4">
+                <div className="mt-5 space-y-4 font-sans">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     <div className="relative">
                       <span className="text-xs font-bold text-stone-600 block">Cliente</span>
@@ -2349,14 +2412,14 @@
                 <div className="flex justify-between items-start">
                   <div>
                     <span className={`text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                      Status: {appointments[detail].status}
+                      {appointments[detail].status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
                     </span>
                     <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
                   </div>
                   <button type="button" onClick={() => setDetail(null)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
                 </div>
                 
-                <div className="my-4 rounded-2xl bg-stone-50 p-4 space-y-1.5">
+                <div className="my-4 rounded-2xl bg-stone-50 p-4 space-y-1.5 font-sans">
                   <p className="text-sm font-bold text-stone-800">{appointments[detail].service} · {formatCurrency(appointments[detail].price)}</p>
                   <p className="text-xs text-stone-500">📅 Data: {appointments[detail].date.split('-').reverse().join('/')} às {formatTime(appointments[detail].time)}–{formatTime(appointments[detail].end)}</p>
                   <p className="text-xs text-stone-400">💅 Profissional: {appointments[detail].pro}</p>
