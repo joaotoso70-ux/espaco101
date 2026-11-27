@@ -3,19 +3,19 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  
+
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Espaço 101" />
-  
+
   <link rel="manifest" href="./manifest.json" />
   <link rel="apple-touch-icon" sizes="180x180" href="./logo.png" />
   <link rel="icon" type="image/png" href="./logo.png" />
   <link rel="shortcut icon" href="./logo.png" />
 
   <title>Espaço 101 - Gestão</title>
-  
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com">
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600;700&family=DM+Sans:wght@400;500;600;700&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet">
@@ -330,6 +330,7 @@
       const [discountPercent, setDiscountPercent] = useState(0);
 
       const [summaryPopup, setSummaryPopup] = useState(null);
+      const [popupDate, setPopupDate] = useState(getTodayISO());
 
       const [newClientName, setNewClientName] = useState('');
       const [newClientPhone, setNewClientPhone] = useState('');
@@ -351,7 +352,25 @@
       const effectivePro = isAdmin ? selectedPro : currentUser;
 
       const todayStr = getTodayISO();
-      
+
+      const getOffsetISO = (offsetDays) => {
+        const d = new Date();
+        d.setDate(d.getDate() + offsetDays);
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      };
+
+      const shiftPopupDate = (offsetDays) => {
+        const [y, m, d] = (popupDate || todayStr).split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        dt.setDate(dt.getDate() + offsetDays);
+        setPopupDate(`${dt.getFullYear()}-${String(dt.getMonth() + 1).padStart(2, '0')}-${String(dt.getDate()).padStart(2, '0')}`);
+      };
+
+      const openSummaryPopup = (key) => {
+        setPopupDate(todayStr);
+        setSummaryPopup(key);
+      };
+
       const todayAppointmentsList = useMemo(() => {
         return appointments
           .filter(a => a.date === todayStr)
@@ -361,6 +380,51 @@
       const todayRevenueAppointments = useMemo(() => {
         return todayAppointmentsList.filter(a => isAdmin || a.pro === currentUser);
       }, [todayAppointmentsList, isAdmin, currentUser]);
+
+      const popupAppointmentsList = useMemo(() => {
+        return appointments
+          .filter(a => a.date === popupDate)
+          .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      }, [appointments, popupDate]);
+
+      const popupRevenueAppointments = useMemo(() => {
+        return popupAppointmentsList.filter(a => isAdmin || a.pro === currentUser);
+      }, [popupAppointmentsList, isAdmin, currentUser]);
+
+      const weekRevenueStats = useMemo(() => {
+        const today = new Date();
+        const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const startOfWeek = new Date(startOfToday);
+        startOfWeek.setDate(today.getDate() - ((today.getDay() + 6) % 7));
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+        const list = appointments.filter(app => {
+          if (!app.date) return false;
+          if (!isAdmin && app.pro !== currentUser) return false;
+          const [ano, mes, dia] = app.date.split('-').map(Number);
+          const d = new Date(ano, mes - 1, dia);
+          return d >= startOfWeek && d <= endOfWeek;
+        });
+        return {
+          total: list.reduce((acc, c) => acc + (Number(c.price) || 0), 0),
+          count: list.length
+        };
+      }, [appointments, isAdmin, currentUser]);
+
+      const monthRevenueStats = useMemo(() => {
+        const today = new Date();
+        const list = appointments.filter(app => {
+          if (!app.date) return false;
+          if (!isAdmin && app.pro !== currentUser) return false;
+          const [ano, mes] = app.date.split('-').map(Number);
+          return ano === today.getFullYear() && (mes - 1) === today.getMonth();
+        });
+        return {
+          total: list.reduce((acc, c) => acc + (Number(c.price) || 0), 0),
+          count: list.length
+        };
+      }, [appointments, isAdmin, currentUser]);
 
       const matchFiltrosClientes = (app) => {
         if (clientFltName.trim()) {
@@ -461,126 +525,277 @@
       };
 
       // --- ABA 1: INÍCIO ---
-      if (tab === 'Início') return (
-        <div className="w-full px-4 py-6 md:px-8">
-          <p className="text-sm text-stone-500">Painel Geral</p>
-          <h1 className="mt-1 font-serif text-3xl font-bold">Visão geral</h1>
-          <p className="mt-1 text-xs text-stone-400">Toque em qualquer cartão abaixo para ver os detalhes.</p>
+      if (tab === 'Início') {
+        const dataExtenso = new Date().toLocaleDateString('pt-BR', { weekday: 'long', day: 'numeric', month: 'long' });
+        const dataExtensoCap = dataExtenso.charAt(0).toUpperCase() + dataExtenso.slice(1);
+        const yesterdayStr = getOffsetISO(-1);
+        const tomorrowStr = getOffsetISO(1);
+        const popupTotalRevenue = popupRevenueAppointments.reduce((a, c) => a + Number(c.price || 0), 0);
+        const popupDateBR = popupDate ? popupDate.split('-').reverse().join('/') : '';
+        const popupDateCurta = popupDate ? popupDate.split('-').reverse().slice(0, 2).join('/') : '';
+        const todayRevenueTotal = todayRevenueAppointments.reduce((a, c) => a + Number(c.price || 0), 0);
 
-          <div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-4">
-            {[
-              ['hoje', 'Hoje', todayAppointmentsList.length + ' agendamentos', 'calendar'],
-              ['equipe', 'Equipe', users.length + ' profissionais', 'users'],
-              ['servicos', 'Serviços', services.length + ' no catálogo', 'sparkles'],
-              ['receita', 'Receita Hoje', formatCurrency(todayRevenueAppointments.reduce((a,c) => a + Number(c.price || 0), 0)), 'wallet']
-            ].map(([key, label, value, icon]) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => setSummaryPopup(key)}
-                className="text-left rounded-3xl border border-stone-200/70 bg-white p-4 hover:border-[#9d6269] hover:shadow-md active:scale-98 transition group">
-                <div className="flex items-center justify-between">
-                  <div className="grid w-9 h-9 place-items-center rounded-full bg-[#faf0ed] text-[#7c4851] group-hover:bg-[#6f424a] group-hover:text-white transition">
-                    <Icon name={icon} size={18}/>
+        return (
+          <div className="w-full px-4 py-4 md:px-8 md:py-6">
+            <div>
+              <h1 className="font-serif text-2xl sm:text-3xl font-bold text-stone-900 leading-tight">Visão geral</h1>
+              <p className="mt-0.5 text-xs text-stone-500">{dataExtensoCap}</p>
+            </div>
+
+            {/* 4 CARTÕES COMPACTOS NO TOPO */}
+            <div className="mt-3.5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+              {[
+                ['hoje', 'Hoje', `${todayAppointmentsList.length} ${todayAppointmentsList.length === 1 ? 'agendamento' : 'agendamentos'}`, 'calendar'],
+                ['equipe', 'Equipe', `${users.length} ${users.length === 1 ? 'profissional' : 'profissionais'}`, 'users'],
+                ['servicos', 'Serviços', `${services.length} no catálogo`, 'sparkles'],
+                ['receita', isAdmin ? 'Receita Hoje' : 'Minha Receita Hoje', formatCurrency(todayRevenueTotal), 'wallet']
+              ].map(([key, label, value, icon]) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => openSummaryPopup(key)}
+                  className="text-left rounded-2xl border border-stone-200/70 bg-white px-3.5 py-3 hover:border-[#9d6269] hover:shadow-sm active:scale-98 transition group">
+                  <div className="flex items-center justify-between">
+                    <div className="grid w-7 h-7 place-items-center rounded-full bg-[#faf0ed] text-[#7c4851] group-hover:bg-[#6f424a] group-hover:text-white transition">
+                      <Icon name={icon} size={14}/>
+                    </div>
+                    <span className="text-[10px] font-bold text-stone-400 group-hover:text-[#6f424a]">Ver →</span>
                   </div>
-                  <span className="text-[10px] font-bold text-stone-400 group-hover:text-[#6f424a]">Ver →</span>
-                </div>
-                <p className="mt-4 text-xs text-stone-500">{label}</p>
-                <p className="mt-1 font-serif text-xl font-bold text-stone-900">{value}</p>
-              </button>
-            ))}
-          </div>
+                  <p className="mt-2 text-[11px] text-stone-500 truncate">{label}</p>
+                  <p className="mt-0.5 font-serif text-base sm:text-lg font-bold text-stone-900 truncate">{value}</p>
+                </button>
+              ))}
+            </div>
 
-          {summaryPopup && (
-            <div onMouseDown={() => setSummaryPopup(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 backdrop-blur-sm p-4 w-full">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl border border-stone-100 max-h-[85vh] flex flex-col">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100 shrink-0">
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9d6269]">Detalhamento</p>
-                    <h3 className="font-serif text-xl font-bold text-stone-900">
-                      {summaryPopup === 'hoje' && `Agendamentos de Hoje (${todayAppointmentsList.length})`}
-                      {summaryPopup === 'equipe' && `Profissionais (${users.length})`}
-                      {summaryPopup === 'servicos' && `Catálogo de Serviços (${services.length})`}
-                      {summaryPopup === 'receita' && `Receita de Hoje (${formatCurrency(todayRevenueAppointments.reduce((a,c) => a + Number(c.price || 0), 0))})`}
-                    </h3>
+            {/* CONTEÚDO PRINCIPAL: MOBILE (SEMANA/MÊS -> PRÓXIMOS) | DESKTOP (PRÓXIMOS À ESQ -> SEMANA/MÊS À DIR) */}
+            <div className="mt-3 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-3 items-start">
+              {/* BANNERS DE SEMANA E MÊS */}
+              <div className="order-1 lg:order-2 grid grid-cols-2 lg:grid-cols-1 gap-2.5">
+                <div className="rounded-2xl bg-[#6f424a] px-3.5 py-3 text-white shadow-sm">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] uppercase tracking-wider text-white/70 font-bold truncate">
+                      {isAdmin ? 'Semana (Geral)' : 'Minha Semana'}
+                    </p>
+                    <span className="text-[10px] text-[#f2c4bb] font-bold shrink-0">({weekRevenueStats.count})</span>
                   </div>
-                  <button type="button" onClick={() => setSummaryPopup(null)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 transition">
-                    <Icon name="x" size={16} />
-                  </button>
+                  <p className="mt-1 font-serif text-lg sm:text-xl font-bold leading-tight">{formatCurrency(weekRevenueStats.total)}</p>
+                  <p className="mt-0.5 text-[10px] text-white/65 hidden lg:block">
+                    {weekRevenueStats.count} {weekRevenueStats.count === 1 ? 'atendimento' : 'atendimentos'} nesta semana
+                  </p>
                 </div>
 
-                <div className="mt-4 overflow-y-auto divide-y divide-stone-100 flex-1 pr-1">
-                  {summaryPopup === 'hoje' && (
-                    todayAppointmentsList.length > 0 ? todayAppointmentsList.map((item, idx) => (
-                      <div key={idx} className="py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
-                          <p className="text-xs text-stone-500 truncate">💅 {item.service} · Prof: <b>{item.pro}</b></p>
-                        </div>
-                        <div className="text-right shrink-0">
-                          <span className="block text-xs font-bold text-[#6f424a]">{formatTime(item.time)}</span>
-                          <span className={`whitespace-nowrap text-[9px] uppercase font-bold px-2.5 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
-                            {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
-                          </span>
-                        </div>
-                      </div>
-                    )) : <p className="py-8 text-center text-xs text-stone-400">Nenhum agendamento marcado para hoje.</p>
-                  )}
+                <div className="rounded-2xl bg-[#553037] px-3.5 py-3 text-white shadow-sm">
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[10px] uppercase tracking-wider text-white/70 font-bold truncate">
+                      {isAdmin ? 'Mês (Geral)' : 'Meu Mês'}
+                    </p>
+                    <span className="text-[10px] text-[#f2c4bb] font-bold shrink-0">({monthRevenueStats.count})</span>
+                  </div>
+                  <p className="mt-1 font-serif text-lg sm:text-xl font-bold leading-tight">{formatCurrency(monthRevenueStats.total)}</p>
+                  <p className="mt-0.5 text-[10px] text-white/65 hidden lg:block">
+                    {monthRevenueStats.count} {monthRevenueStats.count === 1 ? 'atendimento' : 'atendimentos'} neste mês
+                  </p>
+                </div>
+              </div>
 
-                  {summaryPopup === 'equipe' && (
-                    users.length > 0 ? users.map((u, idx) => (
-                      <div key={idx} className="py-3 flex items-center justify-between gap-3">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <span className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
-                            {(u.name || 'P')[0]}
-                          </span>
-                          <div className="min-w-0">
-                            <p className="text-sm font-bold text-stone-800 truncate">{u.name}</p>
-                            <p className="text-xs text-stone-500 truncate">{u.role}</p>
-                          </div>
-                        </div>
-                        {u.isAdmin && (
-                          <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#6f424a]">Admin</span>
-                        )}
-                      </div>
-                    )) : <p className="py-8 text-center text-xs text-stone-400">Nenhuma profissional cadastrada.</p>
-                  )}
-
-                  {summaryPopup === 'servicos' && (
-                    services.length > 0 ? services.map((s, idx) => (
-                      <div key={idx} className="py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-stone-800 truncate">{s.name}</p>
-                          <p className="text-xs text-stone-400">Duração: {s.time}</p>
-                        </div>
-                        <span className="text-sm font-bold text-[#6f424a] shrink-0">{formatCurrency(s.price)}</span>
-                      </div>
-                    )) : <p className="py-8 text-center text-xs text-stone-400">Nenhum serviço cadastrado.</p>
-                  )}
-
-                  {summaryPopup === 'receita' && (
-                    todayRevenueAppointments.length > 0 ? todayRevenueAppointments.map((item, idx) => (
-                      <div key={idx} className="py-3 flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <p className="text-sm font-bold text-stone-800 truncate">{item.client}</p>
-                          <p className="text-xs text-stone-500 truncate">{item.service} · {item.pro} ({formatTime(item.time)})</p>
-                        </div>
-                        <span className="text-sm font-bold text-emerald-700 shrink-0">{formatCurrency(item.price)}</span>
-                      </div>
-                    )) : <p className="py-8 text-center text-xs text-stone-400">Nenhuma receita registrada para hoje.</p>
-                  )}
+              {/* PRÓXIMOS DE HOJE */}
+              <div className="order-2 lg:order-1 overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm">
+                <div className="border-b border-stone-100 px-4 py-3 flex items-center justify-between">
+                  <h2 className="font-serif text-base font-bold text-stone-900">Próximos de hoje</h2>
+                  <span className="text-[11px] font-bold text-[#6f424a] bg-[#faf0ed] px-2.5 py-0.5 rounded-full">
+                    {todayAppointmentsList.length} {todayAppointmentsList.length === 1 ? 'horário' : 'horários'}
+                  </span>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-stone-100 shrink-0">
-                  <button type="button" onClick={() => setSummaryPopup(null)} className="w-full rounded-xl bg-[#6f424a] py-2.5 text-xs font-bold text-white hover:bg-[#5b363d] transition">
-                    Fechar
-                  </button>
+                <div className="divide-y divide-stone-100">
+                  {todayAppointmentsList.length > 0 ? todayAppointmentsList.map((item, idx) => (
+                    <button
+                      key={`${item.time}-${item.client}-${idx}`}
+                      type="button"
+                      onClick={() => onSelectAppointment(appointments.indexOf(item))}
+                      className="flex w-full items-stretch gap-3 px-4 py-3 text-left hover:bg-[#fcf8f6] transition">
+                      <div className="w-11 shrink-0 pt-0.5">
+                        <p className="text-sm font-bold text-stone-800">{formatTime(item.time)}</p>
+                      </div>
+                      <div className={`w-1 shrink-0 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
+                      <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-0.5">
+                          <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
+                          <p className="text-xs text-stone-500 leading-snug">{item.service} · {item.pro}</p>
+                        </div>
+                        <span className={`whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
+                          {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
+                        </span>
+                      </div>
+                    </button>
+                  )) : (
+                    <div className="px-4 py-10 text-center text-xs text-stone-400">
+                      Nenhum atendimento marcado para hoje.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
-          )}
-        </div>
-      );
+
+            {/* POPUP DE DETALHAMENTO COM SELETOR DE DATA */}
+            {summaryPopup && (
+              <div onMouseDown={() => setSummaryPopup(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 backdrop-blur-sm p-4 w-full">
+                <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 max-h-[85vh] flex flex-col">
+                  <div className="flex items-center justify-between pb-3 border-b border-stone-100 shrink-0">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-wider text-[#9d6269]">Detalhamento</p>
+                      <h3 className="font-serif text-xl font-bold text-stone-900">
+                        {summaryPopup === 'hoje' && 'Agendamentos do Dia'}
+                        {summaryPopup === 'equipe' && `Profissionais (${users.length})`}
+                        {summaryPopup === 'servicos' && `Catálogo de Serviços (${services.length})`}
+                        {summaryPopup === 'receita' && (isAdmin ? 'Receita do Dia' : 'Minha Receita do Dia')}
+                      </h3>
+                    </div>
+                    <button type="button" onClick={() => setSummaryPopup(null)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500 hover:bg-stone-200 transition">
+                      <Icon name="x" size={16} />
+                    </button>
+                  </div>
+
+                  {(summaryPopup === 'hoje' || summaryPopup === 'receita') && (
+                    <div className="mt-3 space-y-2.5 shrink-0">
+                      <div className="flex items-center justify-between gap-2 rounded-2xl bg-stone-100/80 p-1.5 border border-stone-200/60">
+                        <button type="button" onClick={() => shiftPopupDate(-1)} className="grid w-8 h-8 place-items-center rounded-xl bg-white text-stone-600 hover:bg-stone-50 shadow-xs transition">
+                          <Icon name="chevronLeft" size={15} />
+                        </button>
+
+                        <label className="relative flex-1 flex items-center justify-center gap-2 py-1.5 rounded-xl cursor-pointer hover:bg-white/70 transition">
+                          <Icon name="calendar" size={15} />
+                          <span className="text-xs font-bold text-stone-800">{popupDateBR}</span>
+                          <input
+                            type="date"
+                            value={popupDate}
+                            onChange={e => { if (e.target.value) setPopupDate(e.target.value); }}
+                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          />
+                        </label>
+
+                        <button type="button" onClick={() => shiftPopupDate(1)} className="grid w-8 h-8 place-items-center rounded-xl bg-white text-stone-600 hover:bg-stone-50 shadow-xs transition">
+                          <Icon name="chevron" size={15} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-center gap-1.5">
+                        {[
+                          ['Ontem', yesterdayStr],
+                          ['Hoje', todayStr],
+                          ['Amanhã', tomorrowStr]
+                        ].map(([lbl, iso]) => (
+                          <button
+                            key={lbl}
+                            type="button"
+                            onClick={() => setPopupDate(iso)}
+                            className={`rounded-full px-3.5 py-1 text-[11px] font-bold transition border ${
+                              popupDate === iso
+                                ? 'bg-[#6f424a] text-white border-[#6f424a]'
+                                : 'bg-white text-stone-600 border-stone-200 hover:bg-stone-50'
+                            }`}>
+                            {lbl}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="rounded-2xl bg-[#6f424a] px-4 py-2.5 text-white flex items-center justify-between text-xs">
+                        {summaryPopup === 'receita' ? (
+                          <>
+                            <span className="font-bold">Total em {popupDateCurta}: {formatCurrency(popupTotalRevenue)}</span>
+                            <span className="text-[#f2c4bb] font-semibold">
+                              {popupRevenueAppointments.length} {popupRevenueAppointments.length === 1 ? 'atendimento' : 'atendimentos'}
+                            </span>
+                          </>
+                        ) : (
+                          <>
+                            <span className="font-bold">Data: {popupDateCurta}</span>
+                            <span className="text-[#f2c4bb] font-semibold">
+                              {popupAppointmentsList.length} {popupAppointmentsList.length === 1 ? 'agendamento' : 'agendamentos'}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mt-3 overflow-y-auto divide-y divide-stone-100 flex-1 pr-1">
+                    {summaryPopup === 'hoje' && (
+                      popupAppointmentsList.length > 0 ? popupAppointmentsList.map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => { setSummaryPopup(null); onSelectAppointment(appointments.indexOf(item)); }}
+                          className="w-full py-3 flex items-center justify-between gap-3 text-left hover:bg-stone-50 px-1 rounded-xl transition">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-stone-800">{item.client}</p>
+                            <p className="text-xs text-stone-500">💅 {item.service} · Prof: <b>{item.pro}</b></p>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <span className="block text-xs font-bold text-[#6f424a]">{formatTime(item.time)}</span>
+                            <span className={`whitespace-nowrap text-[9px] uppercase font-bold px-2 py-0.5 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>
+                              {item.status === 'confirmado' ? 'Confirmado' : 'Agendado'}
+                            </span>
+                          </div>
+                        </button>
+                      )) : <p className="py-8 text-center text-xs text-stone-400">Nenhum agendamento marcado para {popupDateCurta}.</p>
+                    )}
+
+                    {summaryPopup === 'equipe' && (
+                      users.length > 0 ? users.map((u, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between gap-3">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <span className="grid w-9 h-9 shrink-0 place-items-center rounded-full bg-rose-100 text-xs font-bold text-rose-700">
+                              {(u.name || 'P')[0]}
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-sm font-bold text-stone-800 truncate">{u.name}</p>
+                              <p className="text-xs text-stone-500 truncate">{u.role}</p>
+                            </div>
+                          </div>
+                          {u.isAdmin && (
+                            <span className="rounded-full bg-[#faf0ed] px-2.5 py-0.5 text-[10px] font-bold text-[#6f424a]">Admin</span>
+                          )}
+                        </div>
+                      )) : <p className="py-8 text-center text-xs text-stone-400">Nenhuma profissional cadastrada.</p>
+                    )}
+
+                    {summaryPopup === 'servicos' && (
+                      services.length > 0 ? services.map((s, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-stone-800 truncate">{s.name}</p>
+                            <p className="text-xs text-stone-400">Duração: {s.time}</p>
+                          </div>
+                          <span className="text-sm font-bold text-[#6f424a] shrink-0">{formatCurrency(s.price)}</span>
+                        </div>
+                      )) : <p className="py-8 text-center text-xs text-stone-400">Nenhum serviço cadastrado.</p>
+                    )}
+
+                    {summaryPopup === 'receita' && (
+                      popupRevenueAppointments.length > 0 ? popupRevenueAppointments.map((item, idx) => (
+                        <div key={idx} className="py-3 flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-bold text-stone-800">{item.client}</p>
+                            <p className="text-xs text-stone-500">{item.service} · {item.pro} ({formatTime(item.time)})</p>
+                          </div>
+                          <span className="text-sm font-bold text-emerald-700 shrink-0">{formatCurrency(item.price)}</span>
+                        </div>
+                      )) : <p className="py-8 text-center text-xs text-stone-400">Nenhuma receita registrada em {popupDateCurta}.</p>
+                    )}
+                  </div>
+
+                  <div className="mt-4 pt-3 border-t border-stone-100 shrink-0">
+                    <button type="button" onClick={() => setSummaryPopup(null)} className="w-full rounded-xl bg-[#6f424a] py-2.5 text-xs font-bold text-white hover:bg-[#5b363d] transition">
+                      Fechar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+        );
+      }
 
       // --- ABA 3: CADASTRO DE CLIENTES ---
       if (tab === 'Cadastro de Clientes') return (
