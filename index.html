@@ -297,19 +297,19 @@
     };
 
     function getWeekDays(referenceDateStr) {
-      const [y, m, d] = (referenceDateStr || getTodayISO()).split('-').map(Number);
-      const curr = new Date(y, m - 1, d);
-      const distanceToMonday = (curr.getDay() + 6) % 7;
-      const monday = new Date(curr);
-      monday.setDate(curr.getDate() - distanceToMonday);
-
-      const weekNames = ['SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB', 'DOM'];
+      const [y, m] = (referenceDateStr || getTodayISO()).split('-').map(Number);
+      const totalDays = new Date(y, m, 0).getDate();
+      const weekNames = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
       const days = [];
-      for (let i = 0; i < 7; i++) {
-        const temp = new Date(monday);
-        temp.setDate(monday.getDate() + i);
-        const iso = `${temp.getFullYear()}-${String(temp.getMonth() + 1).padStart(2, '0')}-${String(temp.getDate()).padStart(2, '0')}`;
-        days.push({ week: weekNames[i], date: String(temp.getDate()).padStart(2, '0'), fullDate: iso, active: iso === referenceDateStr });
+      for (let d = 1; d <= totalDays; d++) {
+        const temp = new Date(y, m - 1, d);
+        const iso = `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        days.push({
+          week: weekNames[temp.getDay()],
+          date: String(d).padStart(2, '0'),
+          fullDate: iso,
+          active: iso === referenceDateStr
+        });
       }
       return days;
     }
@@ -2075,11 +2075,18 @@
       };
 
       const changeWeek = (offset) => {
-        const [y, m, d] = appDate.split('-').map(Number);
-        const curr = new Date(y, m - 1, d);
-        curr.setDate(curr.getDate() + offset);
-        setAppDate(`${curr.getFullYear()}-${String(curr.getMonth() + 1).padStart(2, '0')}-${String(curr.getDate()).padStart(2, '0')}`);
+        const [y, m] = appDate.split('-').map(Number);
+        const step = offset > 0 ? 1 : -1;
+        const next = new Date(y, (m - 1) + step, 1);
+        setAppDate(`${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, '0')}-01`);
       };
+
+      useEffect(() => {
+        if (tab === 'Agenda') {
+          const el = document.getElementById('agenda-day-active');
+          if (el) el.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+        }
+      }, [appDate, tab]);
 
       const weekDays = useMemo(() => getWeekDays(appDate), [appDate]);
       const professionalAppointments = appointments
@@ -2287,7 +2294,7 @@
                       </h1>
                       
                       <div className="flex items-center gap-1.5">
-                        <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
+                        <button type="button" onClick={() => changeWeek(-1)} title="Mês anterior" className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
                           <Icon name="chevronLeft" size={15} />
                         </button>
                         
@@ -2296,14 +2303,14 @@
                           <span>{appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}</span>
                         </button>
 
-                        <button type="button" onClick={() => changeWeek(7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
+                        <button type="button" onClick={() => changeWeek(1)} title="Próximo mês" className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
                           <Icon name="chevron" size={15} />
                         </button>
                       </div>
                     </section>
 
                     <section className="mb-4 bg-white/70 border border-stone-200/40 rounded-3xl p-2.5">
-                      <div className="grid grid-cols-7 gap-1">
+                      <div className="flex gap-1.5 overflow-x-auto pb-2 scroll-smooth">
                         {weekDays.map(day => {
                           const temAtendimentoNoDia = appointments.some(a =>
                             a.date === day.fullDate &&
@@ -2312,10 +2319,11 @@
                           );
                           return (
                             <button 
-                              key={day.fullDate} 
+                              key={day.fullDate}
+                              id={day.active ? 'agenda-day-active' : undefined}
                               type="button" 
                               onClick={() => setAppDate(day.fullDate)} 
-                              className={`flex flex-col items-center justify-center rounded-2xl py-2.5 transition relative ${
+                              className={`flex flex-col items-center justify-center rounded-2xl py-2.5 min-w-[54px] shrink-0 transition relative ${
                                 day.active 
                                   ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/15' 
                                   : 'hover:bg-rose-50/50 text-stone-600'
