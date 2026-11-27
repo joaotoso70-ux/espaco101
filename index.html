@@ -1280,8 +1280,9 @@
         return '';
       })();
 
-      const mostrarDivisaoPro = isAdmin && effectivePro !== 'Todos' && Number(discountPercent) === 30;
-      const mostrarSalaoGeral = isAdmin && effectivePro === 'Todos';
+      const isCarolSelected = String(effectivePro || '').toLowerCase().includes('carol');
+      const mostrarDivisaoPro = isAdmin && effectivePro !== 'Todos' && !isCarolSelected && Number(discountPercent) === 30;
+      const mostrarSalaoGeral = isAdmin && (effectivePro === 'Todos' || (isCarolSelected && Number(discountPercent) === 20));
       const valorSalao = faturamentoBruto * 0.2;
       const valorCarol = faturamentoBruto * 0.1;
 
@@ -1394,7 +1395,13 @@
                       onChange={e => {
                         const val = e.target.value;
                         setSelectedPro(val);
-                        setDiscountPercent(val !== 'Todos' ? 30 : 0);
+                        if (val === 'Todos') {
+                          setDiscountPercent(0);
+                        } else if (String(val).toLowerCase().includes('carol')) {
+                          setDiscountPercent(20);
+                        } else {
+                          setDiscountPercent(30);
+                        }
                       }}
                       className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none">
                       <option value="Todos">Todas as Profissionais (Geral)</option>
@@ -1530,7 +1537,7 @@
       const [showClientSuggestions, setShowClientSuggestions] = useState(false);
       const [service, setService] = useState('');
       const [professional, setProfessional] = useState('Carol');
-      const [agendaProfessional, setAgendaProfessional] = useState('Carol');
+      const [agendaProfessional, setAgendaProfessional] = useState('Todos');
 
       const [colabName, setColabName] = useState('');
       const [colabRole, setColabRole] = useState('Profissional');
@@ -1622,7 +1629,6 @@
             if (userMatch) {
               const eDev = userMatch.isDev || String(userMatch.role).toLowerCase() === 'desenvolvedor';
               setCurrentUser(userMatch.name);
-              setAgendaProfessional(eDev ? firstTeamPro : userMatch.name);
               setProfessional(eDev ? firstTeamPro : userMatch.name);
               setLoggedIn(true);
               registrarPushNoServidor(userMatch.name);
@@ -1643,19 +1649,20 @@
 
       const dayBlocks = useMemo(() => {
         return blockedDays.filter(b => 
-          b.date === appDate && String(b.pro).trim().toLowerCase() === String(agendaProfessional).trim().toLowerCase()
+          b.date === appDate && (agendaProfessional === 'Todos' || String(b.pro).trim().toLowerCase() === String(agendaProfessional).trim().toLowerCase())
         );
       }, [blockedDays, appDate, agendaProfessional]);
 
-      const hasFullDayBlock = useMemo(() => dayBlocks.some(b => b.fullDay), [dayBlocks]);
+      const hasFullDayBlock = useMemo(() => agendaProfessional !== 'Todos' && dayBlocks.some(b => b.fullDay), [dayBlocks, agendaProfessional]);
 
       const canManageBlock = useMemo(() => {
+        if (agendaProfessional === 'Todos') return false;
         if (isAdmin) return true;
         return String(currentUser).trim().toLowerCase() === String(agendaProfessional).trim().toLowerCase();
       }, [isAdmin, currentUser, agendaProfessional]);
 
       const handleCreateBlock = async () => {
-        if (isTogglingBlock) return;
+        if (isTogglingBlock || agendaProfessional === 'Todos') return;
         const targetDate = blockDate || appDate;
         if (targetDate < getTodayISO()) {
           setToast('⚠️ Escolha hoje ou uma data futura para bloquear.');
@@ -1740,7 +1747,7 @@
         const defaultPro = eDev ? (teamUsers[0]?.name || 'Carol') : found.name;
 
         setCurrentUser(found.name);
-        setAgendaProfessional(defaultPro);
+        setAgendaProfessional('Todos');
         setProfessional(defaultPro);
         setLoggedIn(true);
         setPassword('');
@@ -1929,7 +1936,7 @@
         setClient(item.client || '');
         setClientPhone(item.phone || '');
         setService(item.service || (services[0] ? services[0].name : ''));
-        setProfessional(item.pro || agendaProfessional);
+        setProfessional(item.pro || (teamUsers[0]?.name || 'Carol'));
         setShowClientSuggestions(false);
         setDetail(null);
         setModal(true);
@@ -2016,7 +2023,6 @@
             setToast('Horário agendado com sucesso!');
           }
           if (res.clientes) setClientsList(res.clientes);
-          setAgendaProfessional(professional);
           setEditingAppIndex(null);
           setModal(false);
           setClient('');
@@ -2078,7 +2084,7 @@
       const weekDays = useMemo(() => getWeekDays(appDate), [appDate]);
       const professionalAppointments = appointments
         .map((item, index) => ({ item, index }))
-        .filter(({ item }) => item.pro === agendaProfessional && item.date === appDate)
+        .filter(({ item }) => (agendaProfessional === 'Todos' || item.pro === agendaProfessional) && item.date === appDate)
         .sort((a, b) => timeToMinutes(a.item.time) - timeToMinutes(b.item.time));
 
       const menuItems = [
@@ -2163,671 +2169,4 @@
 
                   {loginError && <p className="mt-2 text-xs font-medium text-red-600">{loginError}</p>}
                   
-                  <button type="submit" className="mt-6 w-full rounded-xl bg-[#6f424a] py-3.5 text-sm font-bold text-white shadow-lg shadow-rose-950/10 hover:bg-[#5b363d] transition">
-                    Acessar Painel
-                  </button>
-                </form>
-
-                {showNotifyBtn && (
-                  <button type="button" onClick={handleAtivarNotificacoes} className="mt-4 w-full flex items-center justify-center gap-2 rounded-xl border border-[#6f424a]/30 bg-white py-3 text-xs font-bold text-[#6f424a] hover:bg-rose-50 transition">
-                    <Icon name="bell" size={16} /> Ativar Notificações neste Celular
-                  </button>
-                )}
-              </div>
-            </section>
-          </div>
-        );
-      }
-
-      return (
-        <div className="flex h-full h-[100dvh] w-full overflow-hidden bg-[#f8f5f2] text-stone-900">
-          
-          {drawerOpen && (
-            <div onMouseDown={() => setDrawerOpen(false)} className="fixed inset-0 z-50 bg-stone-950/50 backdrop-blur-xs transition-opacity">
-              <aside onMouseDown={e => e.stopPropagation()} className="flex h-full w-72 flex-col bg-[#251d20] px-4 py-6 text-white shadow-2xl">
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-3">
-                    <BrandMark small/>
-                    <div>
-                      <p className="font-serif text-xl font-bold">Espaço 101</p>
-                      <p className="text-[11px] text-white/45">Studio de beleza</p>
-                    </div>
-                  </div>
-                  <button type="button" onClick={() => setDrawerOpen(false)} className="grid w-9 h-9 place-items-center rounded-xl bg-white/10 text-white/80 hover:bg-white/20 transition">
-                    <Icon name="x" size={18} />
-                  </button>
-                </div>
-
-                <nav className="mt-8 space-y-1 flex-1 overflow-y-auto">
-                  {menuItems.map(([label, icon]) => (
-                    <button 
-                      key={label} 
-                      type="button" 
-                      onClick={() => { setTab(label); setDrawerOpen(false); }} 
-                      className={`flex w-full items-center gap-3 rounded-xl px-3.5 py-3 text-sm font-medium transition ${tab === label ? 'bg-white/15 text-white font-bold shadow-xs' : 'text-white/65 hover:bg-white/8 hover:text-white'}`}>
-                      <Icon name={icon} size={19} />
-                      <span>{label}</span>
-                    </button>
-                  ))}
-                </nav>
-
-                {isAdmin && (
-                  <div className="pt-4 border-t border-white/10 space-y-2">
-                    <button type="button" onClick={() => { setDrawerOpen(false); handleOpenServiceModal(null); }} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
-                      <Icon name="plus" size={15}/> + Serviços
-                    </button>
-                    <button type="button" onClick={() => { setDrawerOpen(false); handleOpenUserModal(null); }} className="flex w-full items-center justify-center gap-2 rounded-xl bg-white/10 px-3 py-2.5 text-xs font-bold text-[#eeb9af] hover:bg-white/20 transition">
-                      <Icon name="userPlus" size={15}/> + Nova Profissional
-                    </button>
-                  </div>
-                )}
-              </aside>
-            </div>
-          )}
-
-          <div className="flex flex-1 flex-col h-full min-w-0 overflow-hidden relative">
-            <header className="shrink-0 z-20 flex items-center justify-between border-b border-stone-200/70 bg-[#f8f5f2]/95 px-4 py-3.5 backdrop-blur md:px-8">
-              <div className="flex items-center gap-3">
-                <button 
-                  type="button" 
-                  onClick={() => setDrawerOpen(true)} 
-                  aria-label="Abrir menu"
-                  className="grid w-10 h-10 place-items-center rounded-xl border border-stone-200 bg-white text-stone-800 shadow-xs hover:bg-stone-50 active:scale-95 transition">
-                  <Icon name="menu" size={20} />
-                </button>
-
-                <div className="flex items-center gap-2.5">
-                  <BrandMark small/>
-                  <div>
-                    <p className="font-serif text-lg font-bold leading-tight">Espaço 101</p>
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-[#9d6269]">
-                      {isSyncing ? 'Sincronizando...' : tab}
-                    </p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {showNotifyBtn && (
-                  <button type="button" onClick={handleAtivarNotificacoes} title="Ativar Notificações" className="grid w-9 h-9 place-items-center rounded-full bg-[#251d20] text-[#eeb9af] shadow-sm">
-                    <Icon name="bell" size={16} />
-                  </button>
-                )}
-
-                <div className="flex items-center gap-1.5 rounded-full bg-white p-1 pr-1.5 shadow-sm border border-stone-200/60">
-                  <span className="text-xs font-bold pl-2.5 pr-1">{currentUser}</span>
-                  <button type="button" onClick={handleLogout} title="Sair da conta" className="flex items-center gap-1 rounded-full bg-stone-100 hover:bg-red-50 hover:text-red-700 px-2.5 py-1 text-xs font-bold text-stone-600 transition border border-stone-200/50">
-                    <Icon name="logOut" size={13}/>
-                    <span>Sair</span>
-                  </button>
-                </div>
-              </div>
-            </header>
-
-            {apiError && (
-              <div className="bg-amber-100 border-b border-amber-200 px-4 py-2 text-xs font-semibold text-amber-900 flex items-center justify-between gap-2">
-                <span>⚠️ {apiError}</span>
-                <button type="button" onClick={carregarDadosDaPlanilha} className="underline font-bold shrink-0">Tentar novamente</button>
-              </div>
-            )}
-
-            <main className="flex-1 overflow-y-auto overscroll-y-contain px-0 pb-28 lg:pb-12" style={{ WebkitOverflowScrolling: 'touch' }}>
-              <div className="w-full max-w-5xl mx-auto">
-                {tab === 'Agenda' ? (
-                  <div className="w-full px-4 py-6 md:px-8">
-                    <section className="mb-4 flex items-center justify-between">
-                      <h1 className="font-serif text-2xl font-bold tracking-tight text-stone-800">
-                        {new Date(appDate + 'T12:00:00').toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' }).toUpperCase()}
-                      </h1>
-                      
-                      <div className="flex items-center gap-1.5">
-                        <button type="button" onClick={() => changeWeek(-7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
-                          <Icon name="chevronLeft" size={15} />
-                        </button>
-                        
-                        <button type="button" onClick={() => setDateModal(true)} className="flex items-center gap-1 h-9 px-3.5 rounded-xl border border-stone-200/80 bg-white text-xs font-bold text-stone-700 hover:bg-stone-50 active:scale-95 transition">
-                          <Icon name="calendar" size={14} />
-                          <span>{appDate === getTodayISO() ? 'Hoje' : appDate.split('-').reverse().slice(0, 2).join('/')}</span>
-                        </button>
-
-                        <button type="button" onClick={() => changeWeek(7)} className="grid w-9 h-9 place-items-center rounded-xl border border-stone-200/80 bg-white text-stone-600 hover:bg-stone-50 active:scale-95 transition">
-                          <Icon name="chevron" size={15} />
-                        </button>
-                      </div>
-                    </section>
-
-                    <section className="mb-4 bg-white/70 border border-stone-200/40 rounded-3xl p-2.5">
-                      <div className="grid grid-cols-7 gap-1">
-                        {weekDays.map(day => {
-                          const temAtendimentoNoDia = appointments.some(a => a.date === day.fullDate && a.pro === agendaProfessional && a.status !== 'cancelado');
-                          return (
-                            <button 
-                              key={day.fullDate} 
-                              type="button" 
-                              onClick={() => setAppDate(day.fullDate)} 
-                              className={`flex flex-col items-center justify-center rounded-2xl py-2.5 transition relative ${
-                                day.active 
-                                  ? 'bg-[#6f424a] text-white shadow-lg shadow-rose-950/15' 
-                                  : 'hover:bg-rose-50/50 text-stone-600'
-                              }`}>
-                              <span className={`text-[8.5px] font-bold tracking-wider uppercase ${day.active ? 'text-white/70' : 'text-stone-400'}`}>
-                                {day.week}
-                              </span>
-                              <span className="mt-0.5 text-[15px] font-bold leading-tight">
-                                {day.date}
-                              </span>
-                              {temAtendimentoNoDia && (
-                                <span className={`absolute bottom-1 w-1 h-1 rounded-full ${day.active ? 'bg-[#f2c4bb]' : 'bg-[#9d6269]'}`} />
-                              )}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-
-                    <section className="mb-4">
-                      <div className="flex gap-1.5 overflow-x-auto pb-2 [scrollbar-width:none]">
-                        {teamUsers.map(person => (
-                          <button 
-                            key={person.name} 
-                            type="button" 
-                            onClick={() => { setAgendaProfessional(person.name); setProfessional(person.name); }} 
-                            className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-left transition ${
-                              agendaProfessional === person.name 
-                                ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a] ring-1 ring-[#9d6269]/40' 
-                                : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
-                            }`}>
-                            <span className="grid w-5 h-5 shrink-0 place-items-center rounded-full bg-[#faf0ed] text-[9.5px] font-bold text-[#6f424a]">
-                              {(person.name || 'P')[0]}
-                            </span>
-                            <span className="text-xs font-bold">{person.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </section>
-
-                    <section className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm w-full">
-                      <div className="border-b border-stone-100 px-5 py-4 flex items-center justify-between gap-3">
-                        <div>
-                          <h2 className="font-serif text-[17px] font-bold text-stone-800">
-                            Agenda de {agendaProfessional}
-                          </h2>
-                          <p className="text-xs text-stone-400">
-                            {professionalAppointments.length} atendimento(s) em {appDate.split('-').reverse().slice(0, 2).join('/')}
-                          </p>
-                        </div>
-
-                        {canManageBlock && (
-                          <button
-                            type="button"
-                            onClick={() => { 
-                              setBlockType('full'); 
-                              setBlockDate(appDate < getTodayISO() ? getTodayISO() : appDate);
-                              setBlockReason('Folga / Compromisso'); 
-                              setBlockModal(true); 
-                            }}
-                            className="grid w-8 h-8 place-items-center rounded-xl bg-red-50 border border-red-100 text-red-700 hover:bg-red-100 transition shrink-0"
-                            title="Bloquear Dia ou Horário">
-                            <Icon name="lock" size={14} />
-                          </button>
-                        )}
-                      </div>
-
-                      {dayBlocks.length > 0 && (
-                        <div className="bg-red-50/90 border-b border-red-200/80 divide-y divide-red-200/50">
-                          {dayBlocks.map((bl, idx) => (
-                            <div key={idx} className="px-5 py-3 flex items-center justify-between gap-3 text-red-800">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <span className="grid w-8 h-8 shrink-0 place-items-center rounded-full bg-red-100 text-red-700">
-                                  <Icon name="lock" size={15} />
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="text-xs font-bold truncate">
-                                    {bl.fullDay ? 'Dia Inteiro Bloqueado' : `Horário Bloqueado: ${bl.startTime} às ${bl.endTime}`}
-                                  </p>
-                                  <p className="text-[11px] text-red-600 truncate">Motivo: {bl.reason}</p>
-                                </div>
-                              </div>
-                              {canManageBlock && (
-                                <button
-                                  type="button"
-                                  disabled={isTogglingBlock}
-                                  onClick={() => handleRemoveBlock(bl)}
-                                  className="flex items-center gap-1 rounded-xl bg-white border border-red-200 px-2.5 py-1.5 text-[11px] font-bold text-[#6f424a] hover:bg-rose-50 transition shrink-0">
-                                  <Icon name="unlock" size={13} />
-                                  <span>Liberar</span>
-                                </button>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      <div className="divide-y divide-stone-100">
-                        {professionalAppointments.map(({ item, index }) => (
-                          <button key={`${item.time}-${item.client}-${index}`} type="button" onClick={() => setDetail(index)} className="flex w-full items-stretch gap-3 px-4 py-3.5 text-left transition hover:bg-[#fcf8f6]">
-                            <div className="w-12 shrink-0 pt-0.5">
-                              <p className="text-[13.5px] font-bold text-stone-800">{formatTime(item.time)}</p>
-                              <p className="text-[10px] text-stone-400">{formatTime(item.end)}</p>
-                            </div>
-                            <div className={`w-1 shrink-0 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-400' : 'bg-amber-400'}`}></div>
-                            <div className="flex min-w-0 flex-1 items-start justify-between gap-2">
-                              <div className="min-w-0 flex-1 space-y-0.5">
-                                <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
-                                <p className="text-xs text-stone-500 leading-snug">{item.service}</p>
-                                <p className="text-[11px] font-semibold text-[#6f424a]">{formatCurrency(item.price)}</p>
-                              </div>
-                              <span className={`whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full ${item.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-amber-50 text-amber-700 border border-amber-200'}`}>
-                                {item.status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
-                              </span>
-                            </div>
-                          </button>
-                        ))}
-                        {professionalAppointments.length === 0 && (
-                          <div className="px-5 py-16 text-center text-stone-400">
-                            <p className="font-bold text-stone-700">{hasFullDayBlock ? '🔒 Agenda fechada nesta data' : '🗓️ Nenhum horário marcado'}</p>
-                            <p className="text-xs text-stone-400 mt-1">
-                              {hasFullDayBlock 
-                                ? 'Desbloqueie acima para aceitar clientes.' 
-                                : `Não há atendimentos para ${agendaProfessional} nesta data.`}
-                            </p>
-                          </div>
-                        )}
-                      </div>
-                    </section>
-                  </div>
-                ) : (
-                  <OtherPage 
-                    tab={tab} 
-                    isAdmin={isAdmin} 
-                    currentUser={currentUser} 
-                    users={teamUsers} 
-                    allUsers={users}
-                    services={services} 
-                    appointments={appointments}
-                    clientsList={clientsList}
-                    onSaveClient={handleSaveManualClient}
-                    onEditClient={handleEditClient}
-                    onDeleteClient={handleDeleteClient}
-                    wppTemplate={wppTemplate}
-                    onSaveWppTemplateDirect={handleSaveWppTemplateDirect}
-                    formatWhatsappMessage={formatWhatsappMessage}
-                    onOpenUserModal={handleOpenUserModal} 
-                    onEditUser={handleOpenUserModal} 
-                    onOpenServiceModal={handleOpenServiceModal} 
-                    onEditService={handleOpenServiceModal} 
-                    onSelectAppointment={idx => setDetail(idx)} 
-                  />
-                )}
-              </div>
-            </main>
-
-            {(tab === 'Início' || tab === 'Agenda' || tab === 'Clientes') && (
-              <button 
-                type="button" 
-                onClick={() => {
-                  setEditingAppIndex(null);
-                  setClient('');
-                  setClientPhone('');
-                  setShowClientSuggestions(false);
-                  if (appDate < getTodayISO()) setAppDate(getTodayISO());
-                  setModal(true);
-                }} 
-                aria-label="Novo horário" 
-                className="fixed bottom-20 right-8 lg:bottom-12 lg:right-14 z-30 grid w-14 h-14 place-items-center rounded-full bg-[#6f424a] text-white shadow-2xl border border-white/20 active:scale-95 hover:bg-[#5b363d] transition-all">
-                <Icon name="plus" size={24} />
-              </button>
-            )}
-          </div>
-
-          {blockModal && (
-            <div onMouseDown={() => setBlockModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                  <div className="flex items-center gap-2">
-                    <span className="grid w-7 h-7 place-items-center rounded-lg bg-red-100 text-red-700">
-                      <Icon name="lock" size={15} />
-                    </span>
-                    <h3 className="font-serif text-lg font-bold text-stone-900">Bloquear Agenda</h3>
-                  </div>
-                  <button type="button" onClick={() => setBlockModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500">
-                    <Icon name="x" size={16} />
-                  </button>
-                </div>
-
-                <div className="mt-4 space-y-4">
-                  <p className="text-xs text-stone-600 leading-relaxed">
-                    Profissional: <b>{agendaProfessional}</b>
-                  </p>
-
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Data do bloqueio:</label>
-                    <input
-                      type="date"
-                      min={getTodayISO()}
-                      value={blockDate}
-                      onChange={e => { if (e.target.value) setBlockDate(e.target.value); }}
-                      className="w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-semibold outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-2 rounded-2xl bg-stone-100 p-1.5 font-sans">
-                    <button
-                      type="button"
-                      onClick={() => setBlockType('full')}
-                      className={`rounded-xl py-2 text-xs font-bold transition ${blockType === 'full' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-500'}`}>
-                      Dia Inteiro
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setBlockType('partial')}
-                      className={`rounded-xl py-2 text-xs font-bold transition ${blockType === 'partial' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-500'}`}>
-                      Horário Específico
-                    </button>
-                  </div>
-
-                  {blockType === 'partial' && (
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label className="text-xs font-bold text-stone-600 block mb-1">Das (Início)</label>
-                        <input
-                          type="time"
-                          value={blockStartTime}
-                          onChange={e => setBlockStartTime(e.target.value)}
-                          className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
-                        />
-                      </div>
-                      <div>
-                        <label className="text-xs font-bold text-stone-600 block mb-1">Até (Término)</label>
-                        <input
-                          type="time"
-                          value={blockEndTime}
-                          onChange={e => setBlockEndTime(e.target.value)}
-                          className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Motivo do bloqueio:</label>
-                    <input 
-                      type="text" 
-                      value={blockReason} 
-                      onChange={e => setBlockReason(e.target.value)} 
-                      placeholder="Ex: Almoço, Folga, Curso..."
-                      className="w-full rounded-xl border border-stone-200 px-3.5 py-2.5 text-sm outline-none bg-stone-50 focus:bg-white focus:border-[#9d6269]"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-5 flex gap-2">
-                  <button type="button" onClick={() => setBlockModal(false)} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-xs font-bold text-stone-600 hover:bg-stone-50 transition">
-                    Cancelar
-                  </button>
-                  <button 
-                    type="button" 
-                    disabled={isTogglingBlock}
-                    onClick={handleCreateBlock} 
-                    className="flex-1 rounded-xl bg-red-600 py-2.5 text-xs font-bold text-white hover:bg-red-700 transition">
-                    {isTogglingBlock ? 'Bloqueando...' : 'Confirmar Bloqueio'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {serviceModal && (
-            <div onMouseDown={() => setServiceModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                  <h3 className="font-serif text-lg font-bold text-stone-900">{editingService ? 'Editar Serviço' : 'Novo Serviço'}</h3>
-                  <button type="button" onClick={() => setServiceModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Nome do Procedimento</label>
-                    <input type="text" value={servName} onChange={e => setServName(e.target.value)} placeholder="Ex: Manicure, Mechas..." className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="text-xs font-bold text-stone-600 block mb-1">Duração</label>
-                      <input type="text" value={servTime} onChange={e => setServTime(e.target.value)} placeholder="60 min" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-stone-600 block mb-1">Preço (R$)</label>
-                      <input type="number" step="0.01" value={servPrice} onChange={e => setServPrice(e.target.value)} placeholder="100.00" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-2">
-                  <button type="button" onClick={handleSaveService} className="w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] transition">Salvar Serviço</button>
-                  {editingService && (
-                    <button type="button" onClick={handleDeleteService} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Excluir Serviço</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {userModal && (
-            <div onMouseDown={() => setUserModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl border border-stone-100 max-h-[90vh] overflow-y-auto">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                  <h3 className="font-serif text-lg font-bold text-stone-900">{editingUser ? 'Editar Perfil' : 'Nova Profissional'}</h3>
-                  <button type="button" onClick={() => setUserModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
-                </div>
-                <div className="mt-4 space-y-3">
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Nome</label>
-                    <input type="text" value={colabName} onChange={e => setColabName(e.target.value)} placeholder="Nome" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Função / Cargo</label>
-                    <input type="text" value={colabRole} onChange={e => setColabRole(e.target.value)} placeholder="Ex: Cabeleireira, Manicure, Desenvolvedor" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                  </div>
-                  <div>
-                    <label className="text-xs font-bold text-stone-600 block mb-1">Senha de Acesso</label>
-                    <input type="password" value={colabPass} onChange={e => setColabPass(e.target.value)} placeholder="Defina uma senha" className="w-full rounded-xl border border-stone-200 px-3 py-2 text-sm outline-none bg-stone-50"/>
-                  </div>
-                  <div className="pt-1">
-                    <label className="flex items-center gap-2.5 p-2 rounded-xl bg-stone-50 border border-stone-200/80 cursor-pointer select-none">
-                      <input 
-                        type="checkbox" 
-                        checked={colabIsAdmin} 
-                        onChange={e => setColabIsAdmin(e.target.checked)} 
-                        className="w-4 h-4 rounded text-[#6f424a] accent-[#6f424a]"
-                      />
-                      <div>
-                        <span className="text-xs font-bold text-stone-800 block">Acesso Administrador</span>
-                        <span className="text-[10px] text-stone-400 block">Pode gerenciar equipe, procedimentos e financeiro</span>
-                      </div>
-                    </label>
-                  </div>
-                </div>
-                <div className="mt-5 space-y-2">
-                  <button type="button" onClick={handleSaveUser} className="w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white hover:bg-[#5b363d] transition">Salvar Perfil</button>
-                  {editingUser && editingUser.name.toLowerCase() !== 'carol' && (
-                    <button type="button" onClick={handleDeleteUser} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Excluir Perfil</button>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {dateModal && (
-            <div onMouseDown={() => setDateModal(false)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/40 backdrop-blur-sm p-4 w-full">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-sm rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 overflow-hidden">
-                <div className="flex items-center justify-between pb-3 border-b border-stone-100">
-                  <h3 className="font-serif text-lg font-bold text-stone-900">Escolher Data</h3>
-                  <button type="button" onClick={() => setDateModal(false)} className="grid w-8 h-8 place-items-center rounded-full bg-stone-100 text-stone-500"><Icon name="x" size={16} /></button>
-                </div>
-                <div className="mt-4 space-y-4">
-                  <button type="button" onClick={() => { setAppDate(getTodayISO()); setDateModal(false); }} className="w-full flex items-center justify-center gap-2 rounded-2xl bg-[#faf0ed] hover:bg-[#f3ded9] text-[#6f424a] py-3 text-sm font-bold border border-rose-200/60 transition">
-                    <Icon name="sparkles" size={16} /> Ir para Hoje ({new Date().toLocaleDateString('pt-BR')})
-                  </button>
-                  <input type="date" value={appDate} onChange={e => { if (e.target.value) setAppDate(e.target.value); }} className="w-full block rounded-2xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm font-semibold text-center outline-none"/>
-                </div>
-                <button type="button" onClick={() => setDateModal(false)} className="mt-5 w-full rounded-xl bg-[#6f424a] py-3 text-sm font-bold text-white transition">Confirmar Data</button>
-              </div>
-            </div>
-          )}
-
-          {modal && (
-            <div onMouseDown={() => { setModal(false); setEditingAppIndex(null); }} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-md sm:rounded-[2rem] max-h-[90vh] overflow-y-auto">
-                <div className="flex items-start justify-between">
-                  <h2 className="font-serif text-2xl font-bold">{editingAppIndex !== null ? 'Editar agendamento' : 'Novo agendamento'}</h2>
-                  <button type="button" onClick={() => { setModal(false); setEditingAppIndex(null); }} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
-                </div>
-                <div className="mt-5 space-y-4 font-sans">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="relative">
-                      <span className="text-xs font-bold text-stone-600 block">Cliente</span>
-                      <input 
-                        value={client} 
-                        onFocus={() => setShowClientSuggestions(true)}
-                        onChange={e => { setClient(e.target.value); setShowClientSuggestions(true); }} 
-                        placeholder="Digite o nome (ex: João)..." 
-                        autoComplete="off"
-                        className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none focus:border-[#9d6269] focus:bg-white" 
-                      />
-                      {showClientSuggestions && clientSuggestions.length > 0 && (
-                        <div className="absolute left-0 right-0 top-full mt-1 z-50 max-h-44 overflow-y-auto rounded-2xl border border-stone-200 bg-white shadow-xl divide-y divide-stone-100">
-                          {clientSuggestions.map((c, idx) => (
-                            <button
-                              key={`${c.name}-${idx}`}
-                              type="button"
-                              onClick={() => {
-                                setClient(c.name);
-                                if (c.phone) setClientPhone(c.phone);
-                                setShowClientSuggestions(false);
-                              }}
-                              className="flex w-full items-center justify-between px-3.5 py-2.5 text-left hover:bg-[#fcf8f6] transition">
-                              <span className="text-xs font-bold text-stone-800 truncate">{c.name}</span>
-                              <span className="text-[11px] text-stone-400 ml-2 shrink-0">{c.phone || ''}</span>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                    <label className="block">
-                      <span className="text-xs font-bold text-stone-600">WhatsApp (opcional)</span>
-                      <input value={clientPhone} onChange={e => setClientPhone(e.target.value)} placeholder="(51) 99999-9999" className="mt-1 w-full rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-sm outline-none" />
-                    </label>
-                  </div>
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-600">Serviço</span>
-                    <select value={service} onChange={e => setService(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
-                      {services.map(s => <option key={s.name} value={s.name}>{s.name} ({formatCurrency(s.price)})</option>)}
-                    </select>
-                  </label>
-                  <div className="grid grid-cols-2 gap-3">
-                    <label>
-                      <span className="text-xs font-bold text-stone-600">Data</span>
-                      <input
-                        type="date"
-                        min={editingAppIndex !== null ? undefined : getTodayISO()}
-                        value={editingAppIndex !== null ? appDate : (appDate < getTodayISO() ? getTodayISO() : appDate)}
-                        onChange={e => setAppDate(e.target.value)}
-                        className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white"
-                      />
-                    </label>
-                    <label>
-                      <span className="text-xs font-bold text-stone-600">Início</span>
-                      <input type="time" value={time} onChange={e => setTime(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 px-3 py-2.5 text-sm outline-none bg-white" />
-                    </label>
-                  </div>
-                  <label className="block">
-                    <span className="text-xs font-bold text-stone-600">Profissional</span>
-                    <select value={professional} onChange={e => setProfessional(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-200 bg-white px-4 py-3 text-sm outline-none">
-                      {teamUsers.map(u => <option key={u.name} value={u.name}>{u.name} ({u.role})</option>)}
-                    </select>
-                  </label>
-                </div>
-                <button 
-                  type="button" 
-                  onClick={addAppointment} 
-                  disabled={isSaving}
-                  className={`mt-6 w-full rounded-xl py-3.5 text-sm font-bold text-white transition ${
-                    isSaving ? 'bg-stone-400 cursor-not-allowed' : 'bg-[#6f424a] hover:bg-[#5b363d]'
-                  }`}>
-                  {isSaving ? 'Salvando...' : (editingAppIndex !== null ? 'Salvar Alterações' : 'Confirmar Agendamento')}
-                </button>
-              </div>
-            </div>
-          )}
-
-          {detail !== null && appointments[detail] && (
-            <div onMouseDown={() => setDetail(null)} className="fixed inset-0 z-50 grid place-items-end bg-stone-950/35 backdrop-blur-sm sm:place-items-center sm:p-4">
-              <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem]">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className={`whitespace-nowrap text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                      {appointments[detail].status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
-                    </span>
-                    <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
-                  </div>
-                  <button type="button" onClick={() => setDetail(null)} className="grid w-9 h-9 place-items-center rounded-full bg-stone-100"><Icon name="x" size={17}/></button>
-                </div>
-                
-                <div className="my-4 rounded-2xl bg-stone-50 p-4 space-y-1.5 font-sans">
-                  <p className="text-sm font-bold text-stone-800">{appointments[detail].service} · {formatCurrency(appointments[detail].price)}</p>
-                  <p className="text-xs text-stone-500">📅 Data: {appointments[detail].date.split('-').reverse().join('/')} às {formatTime(appointments[detail].time)}–{formatTime(appointments[detail].end)}</p>
-                  <p className="text-xs text-stone-400">💅 Profissional: {appointments[detail].pro}</p>
-                  {appointments[detail].phone ? (
-                    <p className="text-xs text-stone-600 font-semibold pt-1">📱 {appointments[detail].phone}</p>
-                  ) : (
-                    <p className="text-[11px] text-stone-400 italic pt-1">Sem telefone cadastrado (abrirá o WhatsApp para escolher contato)</p>
-                  )}
-                </div>
-
-                <div className="space-y-2">
-                  <div className="flex gap-2 items-center">
-                    <button 
-                      type="button" 
-                      onClick={() => handleSendWhatsapp(appointments[detail])} 
-                      className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 py-3 text-sm font-bold text-white transition shadow-sm active:scale-98">
-                      <Icon name="whatsapp" size={18} />
-                      <span>Enviar WhatsApp</span>
-                    </button>
-                    <button 
-                      type="button" 
-                      onClick={() => { setDetail(null); setTab('Mensagem WhatsApp'); }} 
-                      title="Editar mensagem padrão do WhatsApp" 
-                      className="grid w-11 h-11 shrink-0 place-items-center rounded-xl border border-stone-200 bg-stone-50 hover:bg-stone-100 text-stone-600 transition shadow-sm">
-                      <Icon name="settings" size={17} />
-                    </button>
-                  </div>
-
-                  <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
-                    {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditAppointment(detail)}
-                    className="w-full rounded-xl border border-stone-300 bg-white py-2.5 text-sm font-bold text-stone-700 hover:bg-stone-50 flex items-center justify-center gap-2 transition">
-                    <Icon name="edit" size={16} />
-                    <span>Editar Agendamento</span>
-                  </button>
-
-                  <button type="button" onClick={() => cancelAppointment(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Cancelar Horário</button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {toast && (
-            <div className="fixed bottom-24 left-1/2 z-[80] -translate-x-1/2 max-w-[90vw] text-center rounded-xl bg-stone-900 px-4 py-3 text-sm font-medium text-white shadow-xl">
-              {toast}
-            </div>
-          )}
-        </div>
-      );
-    }
-
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
-</body>
-</html>
+                  <button type="submit" className="mt-6 w-full rounded-xl bg-[#6f424a
