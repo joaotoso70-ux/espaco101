@@ -328,6 +328,7 @@
       const [customEnd, setCustomEnd] = useState(getTodayISO());
       const [selectedPro, setSelectedPro] = useState(isAdmin ? 'Todos' : currentUser);
       const [discountPercent, setDiscountPercent] = useState(0);
+      const [showDiscountSim, setShowDiscountSim] = useState(false);
 
       const [summaryPopup, setSummaryPopup] = useState(null);
       const [popupDate, setPopupDate] = useState(getTodayISO());
@@ -489,6 +490,19 @@
         }));
       }, [filteredAppointments, users, faturamentoBruto, isAdmin]);
 
+      const ticketMedio = filteredAppointments.length > 0 ? faturamentoBruto / filteredAppointments.length : 0;
+
+      const topServices = useMemo(() => {
+        const map = {};
+        filteredAppointments.forEach(app => {
+          const nome = app.service || 'Outros';
+          if (!map[nome]) map[nome] = { name: nome, count: 0, total: 0 };
+          map[nome].count += 1;
+          map[nome].total += Number(app.price) || 0;
+        });
+        return Object.values(map).sort((a, b) => b.total - a.total);
+      }, [filteredAppointments]);
+
       const filteredClientsList = useMemo(() => {
         const term = clientSearchFilter.trim().toLowerCase();
         if (!term) return clientsList;
@@ -542,7 +556,6 @@
               <p className="mt-0.5 text-xs text-stone-500">{dataExtensoCap}</p>
             </div>
 
-            {/* 4 CARTÕES COMPACTOS NO TOPO */}
             <div className="mt-3.5 grid grid-cols-2 gap-2.5 lg:grid-cols-4">
               {[
                 ['hoje', 'Hoje', `${todayAppointmentsList.length} ${todayAppointmentsList.length === 1 ? 'agendamento' : 'agendamentos'}`, 'calendar'],
@@ -567,9 +580,7 @@
               ))}
             </div>
 
-            {/* CONTEÚDO PRINCIPAL: MOBILE (SEMANA/MÊS -> PRÓXIMOS) | DESKTOP (PRÓXIMOS À ESQ -> SEMANA/MÊS À DIR) */}
             <div className="mt-3 grid grid-cols-1 lg:grid-cols-[1.65fr_1fr] gap-3 items-start">
-              {/* BANNERS DE SEMANA E MÊS */}
               <div className="order-1 lg:order-2 grid grid-cols-2 lg:grid-cols-1 gap-2.5">
                 <div className="rounded-2xl bg-[#6f424a] px-3.5 py-3 text-white shadow-sm">
                   <div className="flex items-center justify-between gap-1">
@@ -598,7 +609,6 @@
                 </div>
               </div>
 
-              {/* PRÓXIMOS DE HOJE */}
               <div className="order-2 lg:order-1 overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm">
                 <div className="border-b border-stone-100 px-4 py-3 flex items-center justify-between">
                   <h2 className="font-serif text-base font-bold text-stone-900">Próximos de hoje</h2>
@@ -637,7 +647,6 @@
               </div>
             </div>
 
-            {/* POPUP DE DETALHAMENTO COM SELETOR DE DATA */}
             {summaryPopup && (
               <div onMouseDown={() => setSummaryPopup(null)} className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 backdrop-blur-sm p-4 w-full">
                 <div onMouseDown={e => e.stopPropagation()} className="w-full max-w-md rounded-3xl bg-white p-5 sm:p-6 shadow-2xl border border-stone-100 max-h-[85vh] flex flex-col">
@@ -1250,7 +1259,7 @@
           <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
             <div>
               <p className="text-sm text-stone-500">Gestão de Receitas ({isAdmin ? 'Geral' : currentUser})</p>
-              <h1 className="mt-1 font-serif text-3xl font-bold">Financeiro & Produção</h1>
+              <h1 className="mt-1 font-serif text-3xl font-bold">Financeiro</h1>
             </div>
             <div className="flex flex-wrap gap-1.5 rounded-2xl bg-stone-200/60 p-1.5">
               {[['hoje', 'Hoje'], ['semana', 'Semana'], ['mes', 'Mês'], ['custom', 'Período']].map(([k, l]) => (
@@ -1260,75 +1269,130 @@
           </div>
 
           {periodFilter === 'custom' && (
-            <div className="mt-4 flex items-center gap-3 rounded-2xl bg-white p-4 border border-stone-200">
+            <div className="mt-4 flex flex-wrap items-center gap-3 rounded-2xl bg-white p-4 border border-stone-200">
               <span className="text-xs font-bold text-stone-600">De:</span>
-              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="rounded-xl border border-stone-200 px-3 py-1.5 text-xs"/>
+              <input type="date" value={customStart} onChange={e => setCustomStart(e.target.value)} className="w-auto rounded-xl border border-stone-200 px-3 py-1.5 text-xs"/>
               <span className="text-xs font-bold text-stone-600">Até:</span>
-              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="rounded-xl border border-stone-200 px-3 py-1.5 text-xs"/>
+              <input type="date" value={customEnd} onChange={e => setCustomEnd(e.target.value)} className="w-auto rounded-xl border border-stone-200 px-3 py-1.5 text-xs"/>
             </div>
           )}
 
-          <div className="mt-6 rounded-3xl bg-[#6f424a] p-6 text-white shadow-sm">
-            <p className="text-xs uppercase tracking-widest text-white/55">Faturamento Líquido ({effectivePro})</p>
+          <div className="mt-5 rounded-3xl bg-[#6f424a] p-6 text-white shadow-sm">
+            <p className="text-xs uppercase tracking-widest text-white/60">Faturamento Líquido ({effectivePro})</p>
             <p className="mt-2 font-serif text-4xl font-bold">{formatCurrency(faturamentoLiquido)}</p>
-            <p className="mt-2 text-xs text-[#f2c4bb]">Bruto: {formatCurrency(faturamentoBruto)} {discountPercent > 0 && `(-${discountPercent}%)`}</p>
+
+            <div className="mt-4 pt-3.5 border-t border-white/15 grid grid-cols-3 gap-2 text-center">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/60">Atendimentos</p>
+                <p className="mt-0.5 text-sm font-bold">{filteredAppointments.length}</p>
+              </div>
+              <div className="border-x border-white/15 px-1">
+                <p className="text-[10px] uppercase tracking-wider text-white/60">Ticket Médio</p>
+                <p className="mt-0.5 text-sm font-bold">{formatCurrency(ticketMedio)}</p>
+              </div>
+              <div>
+                <p className="text-[10px] uppercase tracking-wider text-white/60">Bruto</p>
+                <p className="mt-0.5 text-sm font-bold text-[#f2c4bb]">{formatCurrency(faturamentoBruto)}</p>
+              </div>
+            </div>
           </div>
 
-          <div className="mt-4 rounded-3xl border border-stone-200/70 bg-white p-5">
-            <h3 className="font-serif text-lg font-bold">Simular e Aplicar Desconto</h3>
-            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-stone-600 block mb-1">Profissional</label>
-                {isAdmin ? (
-                  <select value={selectedPro} onChange={e => setSelectedPro(e.target.value)} className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none">
-                    <option value="Todos">Todas as Profissionais (Geral)</option>
-                    {users.map(u => <option key={u.name} value={u.name}>{u.name}</option>)}
-                  </select>
-                ) : <div className="rounded-xl bg-stone-100 px-3 py-2 text-sm font-bold">{currentUser}</div>}
+          <div className="mt-3 rounded-3xl border border-stone-200/70 bg-white overflow-hidden shadow-xs">
+            <button
+              type="button"
+              onClick={() => setShowDiscountSim(prev => !prev)}
+              className="w-full flex items-center justify-between px-5 py-3.5 text-left hover:bg-stone-50 transition">
+              <div className="flex items-center gap-3">
+                <span className="grid w-8 h-8 place-items-center rounded-full bg-[#faf0ed] text-xs font-bold text-[#6f424a]">%</span>
+                <div>
+                  <p className="text-sm font-bold text-stone-800">Simular desconto & filtros</p>
+                  {(discountPercent > 0 || (isAdmin && selectedPro !== 'Todos')) && (
+                    <p className="text-[11px] font-semibold text-[#6f424a]">
+                      {isAdmin && selectedPro !== 'Todos' ? `Prof: ${selectedPro}` : 'Todas'}
+                      {discountPercent > 0 ? ` · Desconto: -${discountPercent}%` : ''}
+                    </p>
+                  )}
+                </div>
               </div>
-              
-              <div>
-                <label className="text-xs font-bold text-stone-600 block mb-1">Desconto (%)</label>
-                <div className="flex gap-2 items-center">
-                  <div className="relative flex-1">
-                    <input 
-                      type="number" 
-                      min="0" 
-                      max="100" 
-                      value={discountPercent} 
-                      onChange={e => setDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
-                      className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-bold outline-none pr-8"
-                      placeholder="0"
-                    />
-                    <span className="absolute right-3 top-2.5 text-xs text-stone-400 font-bold">%</span>
-                  </div>
-                  <div className="flex gap-1">
-                    {[0, 10, 20, 30].map(v => (
-                      <button 
-                        key={v} 
-                        type="button" 
-                        onClick={() => setDiscountPercent(v)} 
-                        className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${discountPercent === v ? 'bg-[#6f424a] text-white border-[#6f424a]' : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'}`}>
-                        {v}%
-                      </button>
-                    ))}
+              <span className={`text-stone-400 transition-transform duration-200 ${showDiscountSim ? 'rotate-90' : ''}`}>
+                <Icon name="chevron" size={18} />
+              </span>
+            </button>
+
+            {showDiscountSim && (
+              <div className="px-5 pb-5 pt-2 border-t border-stone-100 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="text-xs font-bold text-stone-600 block mb-1">Profissional</label>
+                  {isAdmin ? (
+                    <select value={selectedPro} onChange={e => setSelectedPro(e.target.value)} className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm outline-none">
+                      <option value="Todos">Todas as Profissionais (Geral)</option>
+                      {users.map(u => <option key={u.name} value={u.name}>{u.name}</option>)}
+                    </select>
+                  ) : <div className="rounded-xl bg-stone-100 px-3 py-2 text-sm font-bold">{currentUser}</div>}
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-stone-600 block mb-1">Desconto (%)</label>
+                  <div className="flex gap-2 items-center">
+                    <div className="relative flex-1">
+                      <input 
+                        type="number" 
+                        min="0" 
+                        max="100" 
+                        value={discountPercent} 
+                        onChange={e => setDiscountPercent(Math.max(0, Math.min(100, Number(e.target.value) || 0)))}
+                        className="w-full rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-bold outline-none pr-8"
+                        placeholder="0"
+                      />
+                      <span className="absolute right-3 top-2.5 text-xs text-stone-400 font-bold">%</span>
+                    </div>
+                    <div className="flex gap-1">
+                      {[0, 10, 20, 30].map(v => (
+                        <button 
+                          key={v} 
+                          type="button" 
+                          onClick={() => setDiscountPercent(v)} 
+                          className={`rounded-xl border px-2.5 py-2 text-xs font-bold transition ${discountPercent === v ? 'bg-[#6f424a] text-white border-[#6f424a]' : 'bg-stone-50 text-stone-600 border-stone-200 hover:bg-stone-100'}`}>
+                          {v}%
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
           </div>
 
           {isAdmin && (
             <div className="mt-4 rounded-3xl border border-stone-200/70 bg-white p-5">
               <h3 className="font-serif text-lg font-bold mb-4">Produção por Profissional</h3>
               {revenueByPro.map(({ name, total, pct }) => (
-                <div key={name} className="mb-3">
+                <div key={name} className="mb-3 last:mb-0">
                   <div className="flex justify-between text-sm font-bold"><span>{name}</span><span>{formatCurrency(total)} ({pct}%)</span></div>
                   <div className="mt-1 h-2 rounded-full bg-stone-100 overflow-hidden"><div className="h-full bg-[#be7d85]" style={{ width: `${pct}%` }}></div></div>
                 </div>
               ))}
             </div>
           )}
+
+          <div className="mt-4 rounded-3xl border border-stone-200/70 bg-white p-5">
+            <h3 className="font-serif text-lg font-bold mb-3">Serviços mais rentáveis</h3>
+            {topServices.length > 0 ? (
+              <div className="divide-y divide-stone-100">
+                {topServices.map(s => (
+                  <div key={s.name} className="py-2.5 flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-stone-800 truncate">{s.name}</p>
+                      <p className="text-xs text-stone-400">{s.count} {s.count === 1 ? 'atendimento' : 'atendimentos'}</p>
+                    </div>
+                    <span className="text-sm font-bold text-[#6f424a] shrink-0">{formatCurrency(s.total)}</span>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="py-4 text-center text-xs text-stone-400">Nenhum atendimento registrado neste período.</p>
+            )}
+          </div>
         </div>
       );
     }
@@ -1950,10 +2014,10 @@
         ['Agenda', 'calendar'],
         ['Cadastro de Clientes', 'userPlus'],
         ['Clientes', 'users'],
-        ['Profissionais', 'badge'],
-        ['Serviços', 'sparkles'],
         ['Financeiro', 'wallet'],
-        ['Mensagem WhatsApp', 'whatsapp']
+        ['Mensagem WhatsApp', 'whatsapp'],
+        ['Profissionais', 'badge'],
+        ['Serviços', 'sparkles']
       ];
 
       if (!loggedIn) {
