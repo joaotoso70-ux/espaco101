@@ -323,6 +323,7 @@
       const [clientSubTab, setClientSubTab] = useState('agendadas');
       const [selectedClientPro, setSelectedClientPro] = useState('Todos');
       const [selectedHistPro, setSelectedHistPro] = useState('Todos');
+      const [selectedCancelPro, setSelectedCancelPro] = useState('Todos');
       const [periodFilter, setPeriodFilter] = useState('mes');
       const [customStart, setCustomStart] = useState(getTodayISO());
       const [customEnd, setCustomEnd] = useState(getTodayISO());
@@ -374,7 +375,7 @@
 
       const todayAppointmentsList = useMemo(() => {
         return appointments
-          .filter(a => a.date === todayStr)
+          .filter(a => a.date === todayStr && a.status !== 'cancelado')
           .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
       }, [appointments, todayStr]);
 
@@ -384,7 +385,7 @@
 
       const popupAppointmentsList = useMemo(() => {
         return appointments
-          .filter(a => a.date === popupDate)
+          .filter(a => a.date === popupDate && a.status !== 'cancelado')
           .sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
       }, [appointments, popupDate]);
 
@@ -401,7 +402,7 @@
         endOfWeek.setDate(startOfWeek.getDate() + 5);
 
         const list = appointments.filter(app => {
-          if (!app.date) return false;
+          if (!app.date || app.status === 'cancelado') return false;
           if (!isAdmin && app.pro !== currentUser) return false;
           const [ano, mes, dia] = app.date.split('-').map(Number);
           const d = new Date(ano, mes - 1, dia);
@@ -416,7 +417,7 @@
       const monthRevenueStats = useMemo(() => {
         const today = new Date();
         const list = appointments.filter(app => {
-          if (!app.date) return false;
+          if (!app.date || app.status === 'cancelado') return false;
           if (!isAdmin && app.pro !== currentUser) return false;
           const [ano, mes] = app.date.split('-').map(Number);
           return ano === today.getFullYear() && (mes - 1) === today.getMonth();
@@ -442,22 +443,28 @@
 
       const futureAppointments = useMemo(() => {
         return appointments
-          .filter(a => a.date >= todayStr && (selectedClientPro === 'Todos' || a.pro === selectedClientPro) && matchFiltrosClientes(a))
+          .filter(a => a.status !== 'cancelado' && a.date >= todayStr && (selectedClientPro === 'Todos' || a.pro === selectedClientPro) && matchFiltrosClientes(a))
           .sort((a, b) => a.date.localeCompare(b.date) || (timeToMinutes(a.time) - timeToMinutes(b.time)));
       }, [appointments, selectedClientPro, todayStr, clientFltName, clientFltDate]);
 
       const pastAppointments = useMemo(() => {
         return appointments
-          .filter(a => a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro) && matchFiltrosClientes(a))
+          .filter(a => a.status !== 'cancelado' && a.date < todayStr && (selectedHistPro === 'Todos' || a.pro === selectedHistPro) && matchFiltrosClientes(a))
           .sort((a, b) => a.date.localeCompare(b.date) || (timeToMinutes(a.time) - timeToMinutes(b.time)));
       }, [appointments, selectedHistPro, todayStr, clientFltName, clientFltDate]);
+
+      const canceledAppointments = useMemo(() => {
+        return appointments
+          .filter(a => a.status === 'cancelado' && (selectedCancelPro === 'Todos' || a.pro === selectedCancelPro) && matchFiltrosClientes(a))
+          .sort((a, b) => b.date.localeCompare(a.date) || (timeToMinutes(b.time) - timeToMinutes(a.time)));
+      }, [appointments, selectedCancelPro, clientFltName, clientFltDate]);
 
       const filteredAppointments = useMemo(() => {
         const today = new Date();
         const startOfToday = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 
         return appointments.filter(app => {
-          if (!app.date) return false;
+          if (!app.date || app.status === 'cancelado') return false;
           const [ano, mes, dia] = app.date.split('-').map(Number);
           const appDate = new Date(ano, mes - 1, dia);
 
@@ -952,19 +959,31 @@
 
       // --- ABA 4: CLIENTES ---
       if (tab === 'Clientes') {
+        const activeSubPro = clientSubTab === 'agendadas' ? selectedClientPro : clientSubTab === 'atendidos' ? selectedHistPro : selectedCancelPro;
+        const setActiveSubPro = (val) => {
+          if (clientSubTab === 'agendadas') setSelectedClientPro(val);
+          else if (clientSubTab === 'atendidos') setSelectedHistPro(val);
+          else setSelectedCancelPro(val);
+        };
+
         return (
           <div className="w-full px-4 py-6 md:px-8">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
               <div>
                 <p className="text-xs font-bold uppercase tracking-wider text-stone-400">Gestão de Clientes</p>
-                <h1 className="mt-1 font-serif text-3xl font-bold">{clientSubTab === 'agendadas' ? 'Clientes Agendadas' : 'Clientes Atendidas'}</h1>
+                <h1 className="mt-1 font-serif text-3xl font-bold">
+                  {clientSubTab === 'agendadas' ? 'Clientes Agendadas' : clientSubTab === 'atendidos' ? 'Clientes Atendidas' : 'Clientes Canceladas'}
+                </h1>
               </div>
-              <div className="inline-flex rounded-2xl bg-stone-200/80 p-1 self-start sm:self-auto shadow-inner border border-stone-300/40">
+              <div className="inline-flex flex-wrap rounded-2xl bg-stone-200/80 p-1 self-start sm:self-auto shadow-inner border border-stone-300/40">
                 <button type="button" onClick={() => setClientSubTab('agendadas')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'agendadas' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
                   <Icon name="calendar" size={15}/> Clientes Agendadas
                 </button>
                 <button type="button" onClick={() => setClientSubTab('atendidos')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'atendidos' ? 'bg-white text-[#6f424a] shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
                   <Icon name="history" size={15}/> Clientes Atendidas
+                </button>
+                <button type="button" onClick={() => setClientSubTab('canceladas')} className={`flex items-center justify-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition whitespace-nowrap ${clientSubTab === 'canceladas' ? 'bg-white text-red-600 shadow-xs' : 'text-stone-600 hover:text-stone-900'}`}>
+                  <Icon name="x" size={15}/> Clientes Canceladas
                 </button>
               </div>
             </div>
@@ -972,9 +991,9 @@
             <div className="flex gap-1.5 overflow-x-auto pb-2.5 [scrollbar-width:none]">
               <button 
                 type="button" 
-                onClick={() => clientSubTab === 'agendadas' ? setSelectedClientPro('Todos') : setSelectedHistPro('Todos')} 
+                onClick={() => setActiveSubPro('Todos')} 
                 className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
-                  (clientSubTab === 'agendadas' ? selectedClientPro : selectedHistPro) === 'Todos' 
+                  activeSubPro === 'Todos' 
                     ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a]' 
                     : 'border-stone-200 bg-white/70 hover:bg-white text-stone-600'
                 }`}>
@@ -983,15 +1002,17 @@
 
               {users.map(u => {
                 const count = clientSubTab === 'agendadas'
-                  ? appointments.filter(a => a.pro === u.name && a.date >= todayStr).length
-                  : appointments.filter(a => a.pro === u.name && a.date < todayStr).length;
-                const isSelected = (clientSubTab === 'agendadas' ? selectedClientPro : selectedHistPro) === u.name;
+                  ? appointments.filter(a => a.status !== 'cancelado' && a.pro === u.name && a.date >= todayStr).length
+                  : clientSubTab === 'atendidos'
+                    ? appointments.filter(a => a.status !== 'cancelado' && a.pro === u.name && a.date < todayStr).length
+                    : appointments.filter(a => a.status === 'cancelado' && a.pro === u.name).length;
+                const isSelected = activeSubPro === u.name;
                 
                 return (
                   <button 
                     key={u.name} 
                     type="button" 
-                    onClick={() => clientSubTab === 'agendadas' ? setSelectedClientPro(u.name) : setSelectedHistPro(u.name)} 
+                    onClick={() => setActiveSubPro(u.name)} 
                     className={`flex shrink-0 items-center gap-2 rounded-full border px-4 py-2 text-xs font-bold transition ${
                       isSelected 
                         ? 'border-[#9d6269] bg-[#faf0ed] text-[#6f424a]' 
@@ -1065,7 +1086,7 @@
                 ))}
                 {futureAppointments.length === 0 && <div className="p-12 text-center text-stone-400">Nenhum agendamento futuro encontrado.</div>}
               </div>
-            ) : (
+            ) : clientSubTab === 'atendidos' ? (
               <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm divide-y divide-stone-100">
                 {pastAppointments.map(item => (
                   <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-start justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
@@ -1084,6 +1105,26 @@
                   </div>
                 ))}
                 {pastAppointments.length === 0 && <div className="p-12 text-center text-stone-400">Nenhum atendimento anterior encontrado.</div>}
+              </div>
+            ) : (
+              <div className="overflow-hidden rounded-3xl border border-stone-200/70 bg-white shadow-sm divide-y divide-stone-100">
+                {canceledAppointments.map(item => (
+                  <div key={`${item.date}-${item.time}-${item.client}`} onClick={() => onSelectAppointment(appointments.indexOf(item))} className="flex items-start justify-between p-4 hover:bg-stone-50 cursor-pointer transition gap-3">
+                    <div className="flex items-start gap-3 min-w-0 flex-1">
+                      <span className="grid w-10 h-10 shrink-0 place-items-center rounded-2xl bg-red-50 text-xs font-bold text-red-600 mt-0.5">{String(item.client).slice(0, 2).toUpperCase()}</span>
+                      <div className="min-w-0 flex-1 space-y-0.5">
+                        <p className="text-sm font-bold text-stone-800 leading-snug">{item.client}</p>
+                        <p className="text-xs font-semibold text-stone-600">📅 {item.date.split('-').reverse().join('/')} às {formatTime(item.time)}</p>
+                        <p className="text-xs text-stone-500 leading-snug">{item.service} · <span className="line-through text-stone-400">{formatCurrency(item.price)}</span></p>
+                        <p className="text-[11px] text-stone-400">👤 {item.pro}</p>
+                      </div>
+                    </div>
+                    <span className="whitespace-nowrap shrink-0 inline-flex items-center gap-1 text-[10px] uppercase font-bold px-2.5 py-1 rounded-full bg-red-50 text-red-700 border border-red-200">
+                      ✕ Cancelado
+                    </span>
+                  </div>
+                ))}
+                {canceledAppointments.length === 0 && <div className="p-12 text-center text-stone-400">Nenhum atendimento cancelado encontrado.</div>}
               </div>
             )}
           </div>
@@ -2036,7 +2077,7 @@
       const toggleAppointmentStatus = async (index) => {
         const item = appointments[index];
         if (!item) return;
-        const novoStatus = item.status === 'confirmado' ? 'agendado' : 'confirmado';
+        const novoStatus = item.status === 'confirmado' ? 'agendado' : (item.status === 'cancelado' ? 'agendado' : 'confirmado');
         await callAPI('atualizarStatusAgendamento', {
           data: item.date,
           hora: item.time,
@@ -2047,7 +2088,11 @@
         const updated = [...appointments];
         updated[index] = { ...item, status: novoStatus };
         setAppointments(updated);
-        setToast(novoStatus === 'confirmado' ? 'Atendimento confirmado!' : 'Status revertido.');
+        setToast(
+          novoStatus === 'confirmado'
+            ? 'Atendimento confirmado!'
+            : (item.status === 'cancelado' ? 'Horário reativado para Agendado!' : 'Status revertido.')
+        );
       };
 
       const cancelAppointment = async (indexToCancel) => {
@@ -2058,8 +2103,33 @@
         if (!confirmar) return;
 
         setDetail(null);
-        setAppointments(prev => prev.filter((_, i) => i !== indexToCancel));
-        setToast('Cancelando e removendo da planilha...');
+        setAppointments(prev => prev.map((it, i) => i === indexToCancel ? { ...it, status: 'cancelado' } : it));
+        setToast('Cancelando horário...');
+
+        const res = await callAPI('atualizarStatusAgendamento', {
+          data: item.date,
+          hora: item.time,
+          cliente: item.client,
+          pro: item.pro,
+          novoStatus: 'cancelado'
+        });
+        if (res && res.sucesso) {
+          setToast('Horário movido para Clientes Canceladas!');
+        } else {
+          setToast('⚠️ ' + (res?.erro || 'Erro ao sincronizar cancelamento.'));
+        }
+      };
+
+      const deleteAppointmentPermanently = async (indexToDelete) => {
+        const item = appointments[indexToDelete];
+        if (!item) return;
+
+        const confirmar = window.confirm(`Deseja excluir permanentemente o registro cancelado de ${item.client}?`);
+        if (!confirmar) return;
+
+        setDetail(null);
+        setAppointments(prev => prev.filter((_, i) => i !== indexToDelete));
+        setToast('Removendo da planilha...');
 
         const res = await callAPI('cancelarAgendamento', {
           data: item.date,
@@ -2068,9 +2138,9 @@
           pro: item.pro
         });
         if (res && res.sucesso) {
-          setToast('Horário excluído com sucesso!');
+          setToast('Registro excluído permanentemente!');
         } else {
-          setToast('⚠️ ' + (res?.erro || 'Erro ao sincronizar cancelamento.'));
+          setToast('⚠️ ' + (res?.erro || 'Erro ao excluir da planilha.'));
         }
       };
 
@@ -2091,7 +2161,7 @@
       const weekDays = useMemo(() => getWeekDays(appDate), [appDate]);
       const professionalAppointments = appointments
         .map((item, index) => ({ item, index }))
-        .filter(({ item }) => (agendaProfessional === 'Todos' || item.pro === agendaProfessional) && item.date === appDate)
+        .filter(({ item }) => item.status !== 'cancelado' && (agendaProfessional === 'Todos' || item.pro === agendaProfessional) && item.date === appDate)
         .sort((a, b) => timeToMinutes(a.item.time) - timeToMinutes(b.item.time));
 
       const menuItems = [
@@ -2807,8 +2877,18 @@
               <div onMouseDown={e => e.stopPropagation()} className="w-full rounded-t-[2rem] bg-white p-6 sm:max-w-sm sm:rounded-[2rem]">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className={`whitespace-nowrap text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${appointments[detail].status === 'confirmado' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
-                      {appointments[detail].status === 'confirmado' ? '✓ Confirmado' : '⌛ Agendado'}
+                    <span className={`whitespace-nowrap text-[10px] uppercase font-bold px-2.5 py-0.5 rounded-full inline-block ${
+                      appointments[detail].status === 'confirmado'
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : appointments[detail].status === 'cancelado'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-amber-100 text-amber-800'
+                    }`}>
+                      {appointments[detail].status === 'confirmado'
+                        ? '✓ Confirmado'
+                        : appointments[detail].status === 'cancelado'
+                          ? '✕ Cancelado'
+                          : '⌛ Agendado'}
                     </span>
                     <h2 className="font-serif text-2xl font-bold mt-1">{appointments[detail].client}</h2>
                   </div>
@@ -2845,7 +2925,11 @@
                   </div>
 
                   <button type="button" onClick={() => toggleAppointmentStatus(detail)} className={`w-full rounded-xl py-3 text-sm font-bold flex items-center justify-center gap-2 transition ${appointments[detail].status === 'confirmado' ? 'bg-amber-500 text-white hover:bg-amber-600' : 'bg-stone-800 text-white hover:bg-stone-900'}`}>
-                    {appointments[detail].status === 'confirmado' ? '↩ Reverter para Agendado' : '✓ Confirmar Atendimento'}
+                    {appointments[detail].status === 'confirmado'
+                      ? '↩ Reverter para Agendado'
+                      : appointments[detail].status === 'cancelado'
+                        ? '↩ Reativar para Agendado'
+                        : '✓ Confirmar Atendimento'}
                   </button>
 
                   <button
@@ -2856,7 +2940,11 @@
                     <span>Editar Agendamento</span>
                   </button>
 
-                  <button type="button" onClick={() => cancelAppointment(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Cancelar Horário</button>
+                  {appointments[detail].status === 'cancelado' ? (
+                    <button type="button" onClick={() => deleteAppointmentPermanently(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Excluir Permanentemente</button>
+                  ) : (
+                    <button type="button" onClick={() => cancelAppointment(detail)} className="w-full rounded-xl border border-red-200 py-2.5 text-xs font-bold text-red-600 hover:bg-red-50 transition">Cancelar Horário</button>
+                  )}
                 </div>
               </div>
             </div>
